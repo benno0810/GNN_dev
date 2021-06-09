@@ -6,6 +6,7 @@ import numpy as np
 import torch.nn as nn
 import torch as th
 from dgl.data import citation_graph as citegrh
+from dgl.data import CoraBinary
 from dgl.data import CoraGraphDataset
 from dgl import DGLGraph
 import dgl.function as fn
@@ -14,6 +15,7 @@ import torch.nn.functional as F
 from dgl.data import RedditDataset,KarateClubDataset
 from dgl.nn import GraphConv
 
+from losses import compute_loss_multiclass
 
 class MylossFunc(nn.Module):
     def __init__(self, deta):
@@ -67,7 +69,7 @@ def evaluate(model, features, labels, mask):
         _, indices = torch.max(logits, dim=1)
         correct = torch.sum(indices == labels)
         return correct.item() * 1.0 / len(labels)
-
+'''
 class CrossEntropyLoss(nn.Module):
     def forward(self, block_outputs, pos_graph, neg_graph):
         with pos_graph.local_scope():
@@ -83,6 +85,8 @@ class CrossEntropyLoss(nn.Module):
         label = th.cat([th.ones_like(pos_score), th.zeros_like(neg_score)]).long()
         loss = F.binary_cross_entropy_with_logits(score, label.float())
         return loss
+'''
+
 
 def Q2(G1:dgl.DGLGraph):
     #calculate matrix Q with diag set to 0
@@ -100,18 +104,53 @@ def Q2(G1:dgl.DGLGraph):
         Q[i][i]=0
     return Q
 
+#a utility function to convert a scipy.coo_matrix to torch.SparseFloat
+def sparse2th(mat):
+    value = mat.data
+    indices = th.LongTensor([mat.row, mat.col])
+    #tensor = th.FloatTensor(th.from_numpy(value).float())
+    tensor = th.sparse.FloatTensor(indices, th.from_numpy(value).float(), mat.shape)
+    return tensor.to_dense()
+
+
+#network visualization utility function
+
+def visualize(labels, g):
+    pos = nx.spring_layout(g, seed=1)
+    plt.figure(figsize=(8, 8))
+    plt.axis('off')
+    nx.draw_networkx(g, pos=pos, node_size=50, cmap=plt.get_cmap('coolwarm'),
+                     node_color=labels, edge_color='k',
+                     arrows=False, width=0.5, style='dotted', with_labels=False)
+
 if __name__=="__main__":
 
     dropout=0.5
     gpu=-1
-    lr=0.01
+    lr=1e-2
     n_epochs=200
     n_hidden=16  # 隐藏层节点的数量
     n_layers=2  # 输入层 + 输出层的数量
     weight_decay=5e-4  # 权重衰减
     self_loop=True  # 自循环
 
-    # cora 数据集
+    # cora_binary
+    data = CoraBinary()
+    g,features,labels=data[1]
+    n_edges=g.number_of_edges()
+    features=sparse2th(features)
+    labels=th.LongTensor(labels)
+    in_feats=features.shape[1]
+    n_classes=2
+    n=len(labels)
+    train_mask = [True]*n
+    val_mask=train_mask
+    test_mask=train_mask
+    print(th.max(features))
+
+
+
+
     '''
     data = citegrh.load_cora()
     features = torch.FloatTensor(data.features)
@@ -123,9 +162,12 @@ if __name__=="__main__":
     in_feats = features.shape[1]
     n_classes = data.num_labels
     n_edges = data.graph.number_of_edges()
+    g = DGLGraph(data.graph)
     '''
+
     # load reddit data
     #data = RedditDataset(self_loop=False)
+    '''
     data =KarateClubDataset()
     n_classes = data.num_classes
 
@@ -141,10 +183,16 @@ if __name__=="__main__":
     train_mask = masks
     val_mask = masks
     test_mask = masks
+    '''
 
 
-    if self_loop:
-        g=dgl.remove_self_loop(g)
+
+
+
+
+
+    #if self_loop:
+    #    g=dgl.remove_self_loop(g)
 
 
     if gpu < 0:
@@ -177,12 +225,9 @@ if __name__=="__main__":
     if cuda:
         model.cuda()
 
-    # 采用交叉熵损失函数和 Adam 优化器
-    # not self_defined entropy loss
+    # use crossentropyLoss as loss, must consider the permutations,
     loss_fcn = torch.nn.CrossEntropyLoss()
 
-    #use modularity as loss function
-    Q=Q2(g)
 
     optimizer = torch.optim.Adam(model.parameters(),
                                  lr=lr)
@@ -194,22 +239,30 @@ if __name__=="__main__":
         t0 = time.time()
         # forward
         logits = model(features)
-        #modularity as loss function
 
-        loss = loss_fcn(logits[train_mask], labels[train_mask])
+        loss_1 = loss_fcn(logits[train_mask], labels[train_mask])
+        loss_2 = loss_fcn(logits[train_mask], 1-labels[train_mask])
+        loss=th.min(loss_1,loss_2)
 
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
+
+
         dur.append(time.time() - t0)
 
         if epoch % 10 == 0:
-            acc = evaluate(model, features, labels, val_mask)
+            # calculate accuracy
+            acc_1 = evaluate(model, features, labels, val_mask)
+            acc_2 = evaluate(model, features, 1 - labels, val_mask)
+            acc = max(acc_1, acc_2)
             print("Epoch {:05d} | Time(s) {:.4f} | Loss {:.4f} | Accuracy {:.4f} | "
                   "ETputs(KTEPS) {:.2f}". format(epoch, np.mean(dur), loss.item(),
                                                  acc, n_edges / np.mean(dur) / 1000))
 
     print()
-    acc = evaluate(model, features, labels, test_mask)
+    acc_1 = evaluate(model, features, labels, test_mask)
+    acc_2 = evaluate(model, features, 1-labels, test_mask)
+    acc=max(acc_1,acc_2)
     print("Test accuracy {:.2%}".format(acc))
