@@ -13,23 +13,50 @@ import dgl.function as fn
 import networkx as nx
 import torch.nn.functional as F
 from dgl.data import RedditDataset,KarateClubDataset
-from dgl.nn import GraphConv
+from dgl.nn import GraphConv,ReLU
 
 from losses import compute_loss_multiclass
 
-class MylossFunc(nn.Module):
-    def __init__(self, deta):
-        super(MylossFunc, self).__init__()
-        self.deta = deta
+class MyModel(nn.Module):
+    def __init__(self,g,dropout):
+        '''
 
-    def forward(self, out, label):
-        out = torch.nn.functional.softmax(out, dim=1)
-        m = torch.max(out, 1)[0]
-        penalty = self.deta * torch.ones(m.size())
-        loss = torch.where(m > 0.5, m, penalty)
+        :param g:
+        :param dropout:
+
+        c_hat = ReLU(f1*c+f2*(Q C)+b) = (nX1)
+        Q= nXn
+        C = nX1
+        Q*C = nX1
+        so dimmension of  input is [n,2], output [n,1], Linear layer  [2,1]
+        '''
+        super(GCN, self).__init__()
+        self.g=g
+        self.layers=th.nn.ModuleList()
+        self.layers.append(th.nn.Linear(2,1))
+        self.layers.append(th.nn.ReLU(inplace=True))
+        self.dropout = nn.Dropout(p=dropout)
+    def forward(self,features):
+        h=features
+        for i, layers in enumerate(self.layers):
+            if i != 0:
+                h = self.dropout(h)
+            h = layers(self.g, h)
+        return h
+
+
+class MylossFunc(nn.Module):
+    def __init__(self, data,C:th.tensor):
+        super(MylossFunc, self).__init__()
+        self.data = data
+        self.C=C
+
+    def forward(self):
+        # -tf.linalg.trace(tf.matmul(tf.matmul(tf.transpose(C),Q),C))
+        temp = th.matmul(th.matmul(C.t(),Q),C)
+        loss=temp.trace()
         loss = torch.sum(loss)
-        loss = Variable(loss, requires_grad=True)
-        return
+        return loss
 
 class GCN(nn.Module):
     def __init__(self,
@@ -189,8 +216,15 @@ if __name__=="__main__":
 
 
 
+    Q=Q2(g)
+    print(np.max(Q))
 
-
+    C_init=Q[0:2]*0
+    C_init[0]=np.random.randint(2, size=(1,Q.shape[0]))
+    C_init[1]=1-C_init[0]
+    C = th.tensor(data=C_init,requires_grad=True)
+    Q = th.from_numpy(Q)
+    print(C)
     #if self_loop:
     #    g=dgl.remove_self_loop(g)
 
@@ -213,22 +247,24 @@ if __name__=="__main__":
     if cuda:
         norm = norm.cuda()
     g.ndata['norm'] = norm.unsqueeze(1)
-
-    model = GCN(g,
+    '''
+        model = GCN(g,
                 in_feats,
                 n_hidden,
                 n_classes,
                 n_layers,
                 F.relu,
                 dropout)
+    '''
+
+    model=MyModel(g,dropout)
 
     if cuda:
         model.cuda()
 
     # use crossentropyLoss as loss, must consider the permutations,
-    loss_fcn = torch.nn.CrossEntropyLoss()
-
-
+    #loss_fcn = torch.nn.CrossEntropyLoss()
+    loss_fcn=MylossFunc(Q,C)
     optimizer = torch.optim.Adam(model.parameters(),
                                  lr=lr)
 
@@ -247,6 +283,8 @@ if __name__=="__main__":
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+
+        #step以后求trace(CQC)最小-<-loss function, tensor 是C_i
 
 
 
