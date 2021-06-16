@@ -3,7 +3,6 @@ import time
 import math
 import dgl
 import numpy as np
-import torch.nn as nn
 import torch as th
 from dgl.data import citation_graph as citegrh
 from dgl.data import CoraBinary
@@ -12,26 +11,61 @@ from dgl import DGLGraph
 import dgl.function as fn
 import networkx as nx
 import torch.nn.functional as F
-from dgl.data import RedditDataset,KarateClubDataset
+from dgl.data import RedditDataset, KarateClubDataset
 from dgl.nn import GraphConv
-
+from torch.nn import MSELoss
 from losses import compute_loss_multiclass
 
-class MylossFunc(nn.Module):
-    def __init__(self, deta):
+
+class MyModel(th.nn.Module):
+    def __init__(self, g, dropout, n_features):
+        '''
+
+        :param g:
+        :param dropout:
+
+        c_hat = ReLU(f1*c+f2*(Q C)+b) = (nX1)
+        Q= nXn
+        C = nX1
+        Q*C = nX1
+        so dimmension of  input is [n,2], output [n,1], Linear layer  [2,1]
+        '''
+        super(MyModel, self).__init__()
+        self.g = g
+        self.layers = th.nn.ModuleList()
+        self.layers.append(th.nn.Linear(n_features, 2))
+        self.layers.append(th.nn.ReLU(inplace=True))
+        self.dropout = th.nn.Dropout(p=dropout)
+
+    def forward(self, features):
+        h = features.float()
+        for i, layers in enumerate(self.layers):
+            if i != 0:
+                h = self.dropout(h)
+            h = layers(h)
+        return h
+
+
+class MylossFunc(th.nn.Module):
+    def __init__(self,C):
         super(MylossFunc, self).__init__()
-        self.deta = deta
+        ## define C as parameter
+        #self.params = th.nn.ParameterList([C])
+        self.params=th.nn.Parameter(data=C.float(),requires_grad=True)
+        print()
 
-    def forward(self, out, label):
-        out = torch.nn.functional.softmax(out, dim=1)
-        m = torch.max(out, 1)[0]
-        penalty = self.deta * torch.ones(m.size())
-        loss = torch.where(m > 0.5, m, penalty)
-        loss = torch.sum(loss)
-        loss = Variable(loss, requires_grad=True)
-        return
+    def forward(self,Q):
+        # -tf.linalg.trace(tf.matmul(tf.matmul(tf.transpose(C),Q),C))
+        C=self.params
+        C=th.sigmoid(C)
+        Q=Q.float()
+        temp = th.matmul(th.matmul(C.t(), Q), C)
+        loss = -temp.trace()
 
-class GCN(nn.Module):
+        return loss
+
+
+class GCN(th.nn.Module):
     def __init__(self,
                  g,
                  in_feats,
@@ -42,7 +76,7 @@ class GCN(nn.Module):
                  dropout):
         super(GCN, self).__init__()
         self.g = g
-        self.layers = nn.ModuleList()
+        self.layers = th.nn.ModuleList()
         # input layer
         self.layers.append(GraphConv(in_feats, n_hidden, activation=activation))
         # output layer
@@ -50,7 +84,7 @@ class GCN(nn.Module):
             self.layers.append(GraphConv(n_hidden, n_hidden, activation=activation))
         # output layer
         self.layers.append(GraphConv(n_hidden, n_classes))
-        self.dropout = nn.Dropout(p=dropout)
+        self.dropout = th.nn.Dropout(p=dropout)
 
     def forward(self, features):
         h = features
@@ -59,6 +93,7 @@ class GCN(nn.Module):
                 h = self.dropout(h)
             h = layers(self.g, h)
         return h
+
 
 def evaluate(model, features, labels, mask):
     model.eval()
@@ -69,8 +104,10 @@ def evaluate(model, features, labels, mask):
         _, indices = torch.max(logits, dim=1)
         correct = torch.sum(indices == labels)
         return correct.item() * 1.0 / len(labels)
+
+
 '''
-class CrossEntropyLoss(nn.Module):
+class CrossEntropyLoss(th.nn.Module):
     def forward(self, block_outputs, pos_graph, neg_graph):
         with pos_graph.local_scope():
             pos_graph.ndata['h'] = block_outputs
@@ -88,32 +125,33 @@ class CrossEntropyLoss(nn.Module):
 '''
 
 
-def Q2(G1:dgl.DGLGraph):
-    #calculate matrix Q with diag set to 0
-    #A=np.array(nx.adjacency_matrix(G1).todense())
-    G1=dgl.to_networkx(G1)
-    A=np.array(nx.adjacency_matrix(G1).todense())
-    T=A.sum(axis=(0,1))
-    Q=A*0
-    w_in=A.sum(axis=1)
-    w_out=w_in.reshape(w_in.shape[0],1)
-    K=w_in*w_out/T
-    Q=(A-K)/T
-    #set Qii to zero for every i
+def Q2(G1: dgl.DGLGraph):
+    # calculate matrix Q with diag set to 0
+    # A=np.array(nx.adjacency_matrix(G1).todense())
+    G1 = dgl.to_networkx(G1)
+    A = np.array(nx.adjacency_matrix(G1).todense())
+    T = A.sum(axis=(0, 1))
+    Q = A * 0
+    w_in = A.sum(axis=1)
+    w_out = w_in.reshape(w_in.shape[0], 1)
+    K = w_in * w_out / T
+    Q = (A - K) / T
+    # set Qii to zero for every i
     for i in range(Q.shape[0]):
-        Q[i][i]=0
+        Q[i][i] = 0
     return Q
 
-#a utility function to convert a scipy.coo_matrix to torch.SparseFloat
+
+# a utility function to convert a scipy.coo_matrix to torch.SparseFloat
 def sparse2th(mat):
     value = mat.data
     indices = th.LongTensor([mat.row, mat.col])
-    #tensor = th.FloatTensor(th.from_numpy(value).float())
+    # tensor = th.FloatTensor(th.from_numpy(value).float())
     tensor = th.sparse.FloatTensor(indices, th.from_numpy(value).float(), mat.shape)
     return tensor.to_dense()
 
 
-#network visualization utility function
+# network visualization utility function
 
 def visualize(labels, g):
     pos = nx.spring_layout(g, seed=1)
@@ -123,33 +161,30 @@ def visualize(labels, g):
                      node_color=labels, edge_color='k',
                      arrows=False, width=0.5, style='dotted', with_labels=False)
 
-if __name__=="__main__":
 
-    dropout=0.5
-    gpu=-1
-    lr=1e-2
-    n_epochs=200
-    n_hidden=16  # 隐藏层节点的数量
-    n_layers=2  # 输入层 + 输出层的数量
-    weight_decay=5e-4  # 权重衰减
-    self_loop=True  # 自循环
+if __name__ == "__main__":
+
+    dropout = 0.5
+    gpu = -1
+    lr = 1e-2
+    n_epochs = 200000
+    n_hidden = 16  # 隐藏层节点的数量
+    n_layers = 2  # 输入层 + 输出层的数量
+    weight_decay = 5e-4  # 权重衰减
+    self_loop = True  # 自循环
 
     # cora_binary
     data = CoraBinary()
-    g,features,labels=data[1]
-    n_edges=g.number_of_edges()
-    features=sparse2th(features)
-    labels=th.LongTensor(labels)
-    in_feats=features.shape[1]
-    n_classes=2
-    n=len(labels)
-    train_mask = [True]*n
-    val_mask=train_mask
-    test_mask=train_mask
-    print(th.max(features))
+    g, features, labels = data[1]
+    n_edges = g.number_of_edges()
+    labels = th.LongTensor(labels)
+    n_classes = 2
 
 
-
+    n = len(labels)
+    train_mask = [True] * n
+    val_mask = train_mask
+    test_mask = train_mask
 
     '''
     data = citegrh.load_cora()
@@ -166,7 +201,7 @@ if __name__=="__main__":
     '''
 
     # load reddit data
-    #data = RedditDataset(self_loop=False)
+    # data = RedditDataset(self_loop=False)
     '''
     data =KarateClubDataset()
     n_classes = data.num_classes
@@ -185,15 +220,22 @@ if __name__=="__main__":
     test_mask = masks
     '''
 
+    Q = Q2(g)
+    print(np.max(Q))
 
-
-
-
-
-
-    #if self_loop:
+    C_init = Q[0:2] * 0
+    C_init[0] = np.random.randint(2, size=(1, Q.shape[0]))
+    C_init[1] = 1 - C_init[0]
+    C = th.tensor(data=C_init.T, requires_grad=True)
+    C=C.float()
+    Q = th.from_numpy(Q)
+    Q=Q.float()
+    Q_C = th.matmul(Q,C)
+    print(C)
+    features = torch.cat([C.detach(),Q_C.detach()], dim=1)
+    in_feats = n_classes * 2  # column number of [C,QC]
+    # if self_loop:
     #    g=dgl.remove_self_loop(g)
-
 
     if gpu < 0:
         cuda = False
@@ -206,63 +248,83 @@ if __name__=="__main__":
         val_mask = val_mask.cuda()
         test_mask = test_mask.cuda()
 
-
     degs = g.in_degrees().float()
     norm = torch.pow(degs, -0.5)
     norm[torch.isinf(norm)] = 0
     if cuda:
         norm = norm.cuda()
     g.ndata['norm'] = norm.unsqueeze(1)
-
-    model = GCN(g,
+    '''
+        model = GCN(g,
                 in_feats,
                 n_hidden,
                 n_classes,
                 n_layers,
                 F.relu,
                 dropout)
+    '''
+
+    model = MyModel(g, dropout, in_feats)
+    for p in model.parameters():
+        print(p)
 
     if cuda:
         model.cuda()
 
     # use crossentropyLoss as loss, must consider the permutations,
-    loss_fcn = torch.nn.CrossEntropyLoss()
+    # loss_fcn = torch.th.nn.CrossEntropyLoss()
+    loss_fcn = MylossFunc(C)
 
+    for p in loss_fcn.parameters():
+        print(p)
 
-    optimizer = torch.optim.Adam(model.parameters(),
-                                 lr=lr)
+    loss_fcn2 = th.nn.MSELoss()
+    optimizer_l = torch.optim.SGD(loss_fcn.parameters(),
+                                  lr=lr)
+    optimizer_f = torch.optim.Adam(model.parameters(),
+                                   lr=lr)
 
     # 训练，并评估
     dur = []
     for epoch in range(n_epochs):
-        model.train()
         t0 = time.time()
+
+        loss_fcn.train()
+        loss_l = loss_fcn(Q)
+        optimizer_l.zero_grad()
+        loss_l.backward()
+        optimizer_l.step()
+
+
+        model.train()
+
         # forward
-        logits = model(features)
+        C_hat = model(features)
+        loss_f = loss_fcn2(C_hat, C.detach())
+        optimizer_f.zero_grad()
+        loss_f.backward()
+        optimizer_f.step()
 
-        loss_1 = loss_fcn(logits[train_mask], labels[train_mask])
-        loss_2 = loss_fcn(logits[train_mask], 1-labels[train_mask])
-        loss=th.min(loss_1,loss_2)
-
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-
-
+        # step以后求trace(CQC)最小-<-loss function, tensor 是C_i
 
         dur.append(time.time() - t0)
 
-        if epoch % 10 == 0:
+        if epoch % 1000 == 0:
+            #print f0,f1,f2
+            for p in model.parameters():
+                print(p)
+            #print C
+            print(C_hat)
             # calculate accuracy
             acc_1 = evaluate(model, features, labels, val_mask)
             acc_2 = evaluate(model, features, 1 - labels, val_mask)
             acc = max(acc_1, acc_2)
-            print("Epoch {:05d} | Time(s) {:.4f} | Loss {:.4f} | Accuracy {:.4f} | "
-                  "ETputs(KTEPS) {:.2f}". format(epoch, np.mean(dur), loss.item(),
-                                                 acc, n_edges / np.mean(dur) / 1000))
+            print("Epoch {} | Time(s) {} | Modularity {} | Accuracy {} | "
+                  "ETputs(KTEPS) {}".format(epoch, np.mean(dur), -loss_l,
+                                                acc, n_edges / np.mean(dur) / 1000))
 
     print()
     acc_1 = evaluate(model, features, labels, test_mask)
-    acc_2 = evaluate(model, features, 1-labels, test_mask)
-    acc=max(acc_1,acc_2)
+    acc_2 = evaluate(model, features, 1 - labels, test_mask)
+    acc = max(acc_1, acc_2)
     print("Test accuracy {:.2%}".format(acc))
