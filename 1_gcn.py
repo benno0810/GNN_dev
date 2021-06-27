@@ -129,6 +129,7 @@ def run(proc_id, n_gpus, args, devices, data):
             blocks = [block.int().to(device) for block in blocks]
             # Compute loss and prediction
             batch_pred = model(blocks, batch_inputs)
+            #didn't consider train_mask？
             loss = loss_fcn(batch_pred, pos_graph, neg_graph)
             optimizer.zero_grad()
             loss.backward()
