@@ -85,6 +85,7 @@ def load_kara():
     n_classes = data.num_classes
     g = data[0]
     n_edges=g.number_of_edges()
+    #g.ndata['label']=g.ndata['label']*0
     n=len(g.ndata['label'])
     labels=g.ndata['label']
     #construct features, train,val,test masks

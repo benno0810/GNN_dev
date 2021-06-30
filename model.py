@@ -52,10 +52,10 @@ class GCN(th.nn.Module):
         self.g = g
         self.layers = th.nn.ModuleList()
         # input layer
-        self.layers.append(GraphConv(in_feats, n_hidden, activation=activation))
+        self.layers.append(GraphConv(in_feats, n_hidden, activation=None))
         # n_layers hidden layer
         for i in range(n_layers - 1):
-            self.layers.append(GraphConv(n_hidden, n_hidden, activation=activation))
+            self.layers.append(GraphConv(n_hidden, n_hidden, activation=None))
         # 1 output layer, use softmax as activation on this layer
         self.layers.append(GraphConv(n_hidden, n_classes,activation=partial(F.softmax,dim=1)))
         self.dropout = th.nn.Dropout(p=dropout)

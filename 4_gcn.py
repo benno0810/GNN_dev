@@ -11,14 +11,16 @@ from GraphSAGE.losses import compute_loss_multiclass
 from utils import *
 from model import *
 from loss import *
+import community as community_louvain
+import matplotlib.cm as cm
 
 def train(g, features, n_classes, in_feats, n_edges, labels,train_mask,val_mask,test_mask,Q,cuda):
     #sethyperparameter
-    dropout = 0.2
+    dropout = 0.0
     gpu = 0
     lr = 5e-2
-    n_epochs = 800000
-    n_hidden =128  # 隐藏层节点的数量
+    n_epochs = 40
+    n_hidden =8  # 隐藏层节点的数量
     n_layers = 2 # 输入层 + 输出层的数量
     weight_decay = 5e-4  # 权重衰减
     self_loop = True  # 自循环
@@ -65,7 +67,7 @@ def train(g, features, n_classes, in_feats, n_edges, labels,train_mask,val_mask,
     for p in loss_fcn.parameters():
         print(p)
 
-    optimizer = torch.optim.SGD(model.parameters(),
+    optimizer = torch.optim.Adam(model.parameters(),
                                   lr=lr)
 
     # train and evaluate (with modularity score and labels)
@@ -85,8 +87,10 @@ def train(g, features, n_classes, in_feats, n_edges, labels,train_mask,val_mask,
         #use eval_mask to see overfitting
         modularity_score=evaluate_M(C_hat[train_mask],Q['train'],cuda)
         dur.append(time.time() - t0)
-        if epoch % 1000 == 0:
+        if epoch % 1 == 0:
             #record modularity
+            #for p in model.parameters():
+            #    print(p)
             M.append(str(-loss.item()))
             acc_1 = evaluate(model, features, labels, val_mask)
             acc_2 = evaluate(model, features, 1 - labels, val_mask)
@@ -112,9 +116,9 @@ def main():
     #prepare training data, set hyperparameters
     # load cora_binary, train_masks,val_masks,test_masks are used for future accuracy comparement with supervised algorithm
     #g, features, n_classes, in_feats, n_edges,labels = load_cora_binary()
-    #g, features, n_classes, in_feats, n_edges, labels = load_kara()
+    g, features, n_classes, in_feats, n_edges, labels = load_kara()
     #g, features, n_classes, in_feats, n_edges, labels=load_les_miserables()
-    g, features, n_classes, in_feats, n_edges, labels = load_citation_graph()
+    #g, features, n_classes, in_feats, n_edges, labels = load_citation_graph()
 
     #graph visualization
 
@@ -148,14 +152,53 @@ def main():
     Q['val'] = th.from_numpy(Q['val'])
     Q['test'] = Q2(g, test_mask)
     Q['test'] = th.from_numpy(Q['test'])
-    #C_init = Q['train'][0:n_classes] * 0
-    #for i in range(0,n_classes):
-    #    C_init[i] = np.random.randint(2, size=(1, Q.shape[0]))
+
+    #generate random input features
+    C_init = Q['train'][0:n_classes] * 0
+    for i in range(0,n_classes):
+        C_init[i] = th.FloatTensor(np.random.randint(2, size=(1, Q['train'].shape[0])))
+    C_init=C_init.t()
+    features=C_init
     #C = th.tensor(data=C_init.T, requires_grad=True)
     #C=C.float()
 
     #Q=Q.float()
     #Q_C = th.matmul(Q,C)
+
+    #generate input feature using louvain algorithm
+    '''
+    nx_g =  nx.karate_club_graph()
+    partition = community_louvain.best_partition(nx_g)
+    n_classes=np.max(list(partition.values()))+1
+    C_init = Q['train'][0:n_classes] * 0
+    C_init = C_init.T
+    for node in partition.keys():
+        C_init[node][partition[node]]=1
+    features=C_init
+
+    print(C_init)
+    '''
+    '''
+    
+    '''
+    nx_g =  nx.karate_club_graph()
+    partition = community_louvain.best_partition(nx_g)
+    n_classes=np.max(list(partition.values()))+1
+    C_init = Q['train'][0:n_classes] * 0
+    C_init = C_init.T
+    for node in partition.keys():
+        C_init[node][partition[node]]=1
+
+    #try C*C.T
+    features=C_init.float()
+    #features=th.matmul(features,features.t())
+    in_feats=features.shape[1]
+
+    print(C_init)
+
+
+
+
 
 
 

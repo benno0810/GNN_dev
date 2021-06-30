@@ -13,9 +13,7 @@ import dgl.function as fn
 import networkx as nx
 import torch.nn.functional as F
 from dgl.data import RedditDataset, KarateClubDataset
-from dgl.nn import GraphConv
 from torch.nn import MSELoss
-from losses import compute_loss_multiclass
 
 
 def Q1(comm, G):
@@ -121,14 +119,15 @@ def modularity(G, partition, correctLoops = False): #modularity of the networkx 
 
 if __name__=="__main__":
 
-    C=np.loadtxt(r"C:\Users\benno\OneDrive\Documents\GitHub\GNN_dev\__py_debug_temp_var_585734174.csv", dtype=np.float,delimiter=",")
+    #C=np.loadtxt(r"C:\Users\benno\OneDrive\Documents\GitHub\GNN_dev\__py_debug_temp_var_585734174.csv", dtype=np.float,delimiter=",")
+    '''
     print(C)
     com={}
     G= nx.karate_club_graph()
     flag=0
     for row_index,row in enumerate(C):
         indices=np.argmax(row)
-        '''
+        
         for k in com:
             if indices in k:
                 flag=1
@@ -136,8 +135,8 @@ if __name__=="__main__":
             com.append([row+1])
         flag=0
         continue
+
         
-        '''
         if indices not in com.keys():
             com[indices]=[row_index]
         else:
@@ -149,3 +148,11 @@ if __name__=="__main__":
     print(com)
 
     print(M_score)
+    '''
+
+
+    G = nx.karate_club_graph()
+    #print(G.nodes[:]['club'])
+    G.nodes[5]["club"]
+    #for node in G.nodes:
+    #    print(node['club'])

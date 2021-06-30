@@ -20,7 +20,7 @@ class ModularityScore(th.nn.Module):
         loss = -temp.trace()
         return loss
 
-'''
+
 class CrossEntropyLoss(th.nn.Module):
     def forward(self, block_outputs, pos_graph, neg_graph):
         with pos_graph.local_scope():
@@ -36,4 +36,3 @@ class CrossEntropyLoss(th.nn.Module):
         label = th.cat([th.ones_like(pos_score), th.zeros_like(neg_score)]).long()
         loss = F.binary_cross_entropy_with_logits(score, label.float())
         return loss
-'''
