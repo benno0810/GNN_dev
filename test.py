@@ -119,13 +119,15 @@ def modularity(G, partition, correctLoops = False): #modularity of the networkx 
 
 if __name__=="__main__":
 
-    #C=np.loadtxt(r"C:\Users\benno\OneDrive\Documents\GitHub\GNN_dev\__py_debug_temp_var_585734174.csv", dtype=np.float,delimiter=",")
-    '''
+    C=np.loadtxt(r"C:\Users\benno\OneDrive\Documents\GitHub\GNN_dev\C_OUT_07052021.csv", dtype=np.float,delimiter=",")
+
     print(C)
-    com={}
+
     G= nx.karate_club_graph()
     flag=0
-    for row_index,row in enumerate(C):
+    '''
+    com={}
+        for row_index,row in enumerate(C):
         indices=np.argmax(row)
         
         for k in com:
@@ -141,18 +143,31 @@ if __name__=="__main__":
             com[indices]=[row_index]
         else:
             com[indices].append(row_index)
-    M_score = nx.algorithms.community.quality.modularity(G, com.values(), weight='weight')
+    '''
+    com = {}
+    for indices,number in enumerate(C[0]):
+        com[indices]=[]
+    for row_index, row in enumerate(C):
+        indices = np.argmax(row)
+
+        for k in com.keys():
+            if indices == k:
+                com[indices].append(row_index)
+                continue
+
+
+    M_score = nx.algorithms.community.quality.modularity(G, list(com.values()), weight='weight')
     M_score_2 = Q1(com.values(),G)
     M_score_3 = Q2(G,C)
     M_score_4 = modularity(G,list(com.values()))
     print(com)
 
     print(M_score)
-    '''
 
 
-    G = nx.karate_club_graph()
+
+    #G = nx.karate_club_graph()
     #print(G.nodes[:]['club'])
-    G.nodes[5]["club"]
+    #G.nodes[5]["club"]
     #for node in G.nodes:
     #    print(node['club'])
