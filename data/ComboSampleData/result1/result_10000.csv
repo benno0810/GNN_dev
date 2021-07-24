@@ -1,0 +1,71 @@
+,graph_type,modularity_classic,modularity_gcn,modularity_combo,NMI_gcn,NMI,model_parameter
+celeganmetabolic_453.mat,directed,0.212995,0.212995,0.451465108,1,0.336023103,"GCN(
+  (layers): ModuleList(
+    (0): MyGraphConv_2_W(in=148, out=148, normalization=none, activation=<function relu at 0x000001C03153D048>)
+    (1): MyGraphConv_2_W(in=148, out=148, normalization=none, activation=functools.partial(<function softmax at 0x000001C031541EE8>, dim=1))
+  )
+  (dropout): Dropout(p=0.0, inplace=False)
+)"
+celegansneural_297.mat,directed,0.012340438,0.012340384,0.507641753,1,0.059015404,"GCN(
+  (layers): ModuleList(
+    (0): MyGraphConv_2_W(in=6, out=6, normalization=none, activation=<function relu at 0x000001C03153D048>)
+    (1): MyGraphConv_2_W(in=6, out=6, normalization=none, activation=functools.partial(<function softmax at 0x000001C031541EE8>, dim=1))
+  )
+  (dropout): Dropout(p=0.0, inplace=False)
+)"
+copperfield_112.mat,undirected,0.29589203,0.13197508,0.298507958,0.474318172,0.537118581,"GCN(
+  (layers): ModuleList(
+    (0): MyGraphConv_2_W(in=12, out=12, normalization=none, activation=<function relu at 0x000001C03153D048>)
+    (1): MyGraphConv_2_W(in=12, out=12, normalization=none, activation=functools.partial(<function softmax at 0x000001C031541EE8>, dim=1))
+  )
+  (dropout): Dropout(p=0.0, inplace=False)
+)"
+email_1133.mat,undirected,0.56690544,0.21686603,0.582801494,0.315044582,0.662535848,"GCN(
+  (layers): ModuleList(
+    (0): MyGraphConv_2_W(in=20, out=20, normalization=none, activation=<function relu at 0x000001C03153D048>)
+    (1): MyGraphConv_2_W(in=20, out=20, normalization=none, activation=functools.partial(<function softmax at 0x000001C031541EE8>, dim=1))
+  )
+  (dropout): Dropout(p=0.0, inplace=False)
+)"
+jazz_198.mat,directed,0.25300336,0.25371277,0.44444471,0.765333349,0.513245888,"GCN(
+  (layers): ModuleList(
+    (0): MyGraphConv_2_W(in=20, out=20, normalization=none, activation=<function relu at 0x000001C03153D048>)
+    (1): MyGraphConv_2_W(in=20, out=20, normalization=none, activation=functools.partial(<function softmax at 0x000001C031541EE8>, dim=1))
+  )
+  (dropout): Dropout(p=0.0, inplace=False)
+)"
+karate_34.mat,undirected,0.4151052,0.31944448,0.419789612,0.697865404,0.891210918,"GCN(
+  (layers): ModuleList(
+    (0): MyGraphConv_2_W(in=8, out=8, normalization=none, activation=<function relu at 0x000001C03153D048>)
+    (1): MyGraphConv_2_W(in=8, out=8, normalization=none, activation=functools.partial(<function softmax at 0x000001C031541EE8>, dim=1))
+  )
+  (dropout): Dropout(p=0.0, inplace=False)
+)"
+lesmis_77.mat,undirected,0.5435783,0.20099667,0.566687983,0.545980116,0.924725691,"GCN(
+  (layers): ModuleList(
+    (0): MyGraphConv_2_W(in=12, out=12, normalization=none, activation=<function relu at 0x000001C03153D048>)
+    (1): MyGraphConv_2_W(in=12, out=12, normalization=none, activation=functools.partial(<function softmax at 0x000001C031541EE8>, dim=1))
+  )
+  (dropout): Dropout(p=0.0, inplace=False)
+)"
+polbooks_105.mat,undirected,0.52696663,0.43905315,0.527236594,0.682546648,0.940756855,"GCN(
+  (layers): ModuleList(
+    (0): MyGraphConv_2_W(in=10, out=10, normalization=none, activation=<function relu at 0x000001C03153D048>)
+    (1): MyGraphConv_2_W(in=10, out=10, normalization=none, activation=functools.partial(<function softmax at 0x000001C031541EE8>, dim=1))
+  )
+  (dropout): Dropout(p=0.0, inplace=False)
+)"
+USAir97_332.mat,directed,0.063172735,0.06317273,0.214735651,1,0.235984805,"GCN(
+  (layers): ModuleList(
+    (0): MyGraphConv_2_W(in=108, out=108, normalization=none, activation=<function relu at 0x000001C03153D048>)
+    (1): MyGraphConv_2_W(in=108, out=108, normalization=none, activation=functools.partial(<function softmax at 0x000001C031541EE8>, dim=1))
+  )
+  (dropout): Dropout(p=0.0, inplace=False)
+)"
+USairports_1858.mat,directed,0.18115743,0.18115726,0.275524341,1,0.345985626,"GCN(
+  (layers): ModuleList(
+    (0): MyGraphConv_2_W(in=816, out=816, normalization=none, activation=<function relu at 0x000001C03153D048>)
+    (1): MyGraphConv_2_W(in=816, out=816, normalization=none, activation=functools.partial(<function softmax at 0x000001C031541EE8>, dim=1))
+  )
+  (dropout): Dropout(p=0.0, inplace=False)
+)"

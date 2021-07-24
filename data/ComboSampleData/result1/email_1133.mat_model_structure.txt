@@ -1,7 +1,0 @@
-GCN(
-  (layers): ModuleList(
-    (0): MyGraphConv(in=10, out=10, normalization=none, activation=<function relu at 0x0000020DF9EC8D38>)
-    (1): MyGraphConv(in=10, out=10, normalization=none, activation=functools.partial(<function softmax at 0x0000020DF9ED5048>, dim=1))
-  )
-  (dropout): Dropout(p=0.0, inplace=False)
-)

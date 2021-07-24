@@ -12,6 +12,7 @@ import math
 import dgl
 import numpy as np
 import torch as th
+from sklearn.metrics.cluster import normalized_mutual_info_score
 
 def Q2(G1: dgl.DGLGraph,mask):
     # calculate modularity matrix Q
@@ -140,6 +141,13 @@ def evaluate(model, features, labels, mask):
         correct = torch.sum(indices == labels)
         return correct.item() * 1.0 / len(labels)
 
+def NMI(C_out,C_init):
+    _, out_indices = torch.max(C_out, dim=1)
+    _, in_indices = torch.max(C_init, dim=1)
+    return normalized_mutual_info_score(out_indices,in_indices)
+
+
+
 def C_construction(model,features,mask):
     #construct binary allocaton of C
     model.eval()
@@ -153,9 +161,15 @@ def C_construction(model,features,mask):
 
 def evaluate_M(C,Q,cuda):
     Q= Q.float()
+    C=C.float()
     if cuda:
         C = C.cuda()
         Q = Q.cuda()
     with torch.no_grad():
-        score=th.matmul(th.matmul(C.t(), Q), C).trace()
-    return score
+        if abs(C.max().item())>0:
+            C = F.softmax(C,dim=1)
+    score=th.matmul(th.matmul(C.t(), Q), C).trace()
+    if cuda:
+        return C, score.cpu()
+    else:
+        return C, score

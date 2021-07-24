@@ -1,0 +1,8 @@
+,graph_type,modularity_classic,modularity_gcn,modularity_combo,NMI_gcn,NMI,model_parameter
+0,undirected,0.01505141,0.42133376,0.5531131368736468,0.5636192352639513,0.5614739276717733,"GCN(
+  (layers): ModuleList(
+    (0): GraphConv(in=16, out=16, normalization=none, activation=<function elu at 0x0000022F11DE9DC8>)
+    (1): GraphConv(in=16, out=16, normalization=none, activation=<function elu at 0x0000022F11DE9DC8>)
+  )
+  (dropout): Dropout(p=0.0, inplace=False)
+)"
