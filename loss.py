@@ -17,7 +17,7 @@ class ModularityScore(th.nn.Module):
             C=C.cuda()
             Q=Q.cuda()
         temp = th.matmul(th.matmul(C.t(), Q), C)
-        loss = -temp.trace()
+        loss = temp.trace()
         return loss
 
 

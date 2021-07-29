@@ -1,71 +1,71 @@
 ,graph_type,modularity_classic,modularity_gcn,modularity_combo,NMI_gcn,NMI,model_parameter
-celeganmetabolic_453.mat,directed,0.212995,,0.4514651083433376,0.0,0.33602310255652973,"GCN(
+celeganmetabolic_453.mat,directed,0.212995,0.212995,0.4514651083433376,1.0,0.33602310255652973,"GCN(
   (layers): ModuleList(
-    (0): MyGraphConv_2_W(in=148, out=148, normalization=both, activation=<function relu at 0x000001652C52E048>)
-    (1): Nomalized_Output(in=148, out=148, normalization=both, activation=<function relu at 0x000001652C52E048>)
+    (0): MyGraphConv_2_W(in=148, out=148, normalization=none, activation=<function relu at 0x0000024D90C00A68>)
+    (1): MyGraphConv_2_W(in=148, out=148, normalization=none, activation=<function relu at 0x0000024D90C00A68>)
   )
   (dropout): Dropout(p=0.0, inplace=False)
 )"
-celegansneural_297.mat,directed,0.012340438,0.00878666,0.507641752830326,0.01992444725625846,0.05901540351141363,"GCN(
+celegansneural_297.mat,directed,0.012340438,0.012340384,0.507641752830326,1.0,0.05901540351141363,"GCN(
   (layers): ModuleList(
-    (0): MyGraphConv_2_W(in=6, out=6, normalization=both, activation=<function relu at 0x000001652C52E048>)
-    (1): Nomalized_Output(in=6, out=6, normalization=both, activation=<function relu at 0x000001652C52E048>)
+    (0): MyGraphConv_2_W(in=6, out=6, normalization=none, activation=<function relu at 0x0000024D90C00A68>)
+    (1): MyGraphConv_2_W(in=6, out=6, normalization=none, activation=<function relu at 0x0000024D90C00A68>)
   )
   (dropout): Dropout(p=0.0, inplace=False)
 )"
-copperfield_112.mat,undirected,0.29589203,0.21782422,0.2985079584775124,0.7522421215154533,0.5371185813260976,"GCN(
+copperfield_112.mat,undirected,0.29589203,0.29589203,0.2985079584775124,1.0,0.5371185813260976,"GCN(
   (layers): ModuleList(
-    (0): MyGraphConv_2_W(in=12, out=12, normalization=both, activation=<function relu at 0x000001652C52E048>)
-    (1): Nomalized_Output(in=12, out=12, normalization=both, activation=<function relu at 0x000001652C52E048>)
+    (0): MyGraphConv_2_W(in=12, out=12, normalization=none, activation=<function relu at 0x0000024D90C00A68>)
+    (1): MyGraphConv_2_W(in=12, out=12, normalization=none, activation=<function relu at 0x0000024D90C00A68>)
   )
   (dropout): Dropout(p=0.0, inplace=False)
 )"
-email_1133.mat,undirected,0.56690544,0.05932997,0.5828014941810017,0.43676797396187483,0.6625358476066845,"GCN(
+email_1133.mat,undirected,0.56690544,0.5669054,0.5828014941810017,1.0,0.6625358476066845,"GCN(
   (layers): ModuleList(
-    (0): MyGraphConv_2_W(in=20, out=20, normalization=both, activation=<function relu at 0x000001652C52E048>)
-    (1): Nomalized_Output(in=20, out=20, normalization=both, activation=<function relu at 0x000001652C52E048>)
+    (0): MyGraphConv_2_W(in=20, out=20, normalization=none, activation=<function relu at 0x0000024D90C00A68>)
+    (1): MyGraphConv_2_W(in=20, out=20, normalization=none, activation=<function relu at 0x0000024D90C00A68>)
   )
   (dropout): Dropout(p=0.0, inplace=False)
 )"
-jazz_198.mat,directed,0.25300336,0.26444265,0.4444447104526879,0.6485532057313776,0.5132458880646175,"GCN(
+jazz_198.mat,directed,0.25300336,0.25300336,0.4444447104526879,1.0,0.5132458880646175,"GCN(
   (layers): ModuleList(
-    (0): MyGraphConv_2_W(in=20, out=20, normalization=both, activation=<function relu at 0x000001652C52E048>)
-    (1): Nomalized_Output(in=20, out=20, normalization=both, activation=<function relu at 0x000001652C52E048>)
+    (0): MyGraphConv_2_W(in=20, out=20, normalization=none, activation=<function relu at 0x0000024D90C00A68>)
+    (1): MyGraphConv_2_W(in=20, out=20, normalization=none, activation=<function relu at 0x0000024D90C00A68>)
   )
   (dropout): Dropout(p=0.0, inplace=False)
 )"
-karate_34.mat,undirected,0.4151052,0.2809829,0.41978961209730403,0.6526708812261258,0.8912109182851041,"GCN(
+karate_34.mat,undirected,0.4151052,0.41510522,0.41978961209730403,1.0,0.8912109182851041,"GCN(
   (layers): ModuleList(
-    (0): MyGraphConv_2_W(in=8, out=8, normalization=both, activation=<function relu at 0x000001652C52E048>)
-    (1): Nomalized_Output(in=8, out=8, normalization=both, activation=<function relu at 0x000001652C52E048>)
+    (0): MyGraphConv_2_W(in=8, out=8, normalization=none, activation=<function relu at 0x0000024D90C00A68>)
+    (1): MyGraphConv_2_W(in=8, out=8, normalization=none, activation=<function relu at 0x0000024D90C00A68>)
   )
   (dropout): Dropout(p=0.0, inplace=False)
 )"
-lesmis_77.mat,undirected,0.5435783,0.35914347,0.566687983343249,0.44298174133794005,0.9247256907478679,"GCN(
+lesmis_77.mat,undirected,0.5435783,0.5435783,0.566687983343249,1.0,0.9247256907478679,"GCN(
   (layers): ModuleList(
-    (0): MyGraphConv_2_W(in=12, out=12, normalization=both, activation=<function relu at 0x000001652C52E048>)
-    (1): Nomalized_Output(in=12, out=12, normalization=both, activation=<function relu at 0x000001652C52E048>)
+    (0): MyGraphConv_2_W(in=12, out=12, normalization=none, activation=<function relu at 0x0000024D90C00A68>)
+    (1): MyGraphConv_2_W(in=12, out=12, normalization=none, activation=<function relu at 0x0000024D90C00A68>)
   )
   (dropout): Dropout(p=0.0, inplace=False)
 )"
-polbooks_105.mat,undirected,0.52696663,0.44320777,0.5272365938060765,0.6276302277979692,0.9407568554726875,"GCN(
+polbooks_105.mat,undirected,0.52696663,0.52696663,0.5272365938060765,1.0,0.9407568554726875,"GCN(
   (layers): ModuleList(
-    (0): MyGraphConv_2_W(in=10, out=10, normalization=both, activation=<function relu at 0x000001652C52E048>)
-    (1): Nomalized_Output(in=10, out=10, normalization=both, activation=<function relu at 0x000001652C52E048>)
+    (0): MyGraphConv_2_W(in=10, out=10, normalization=none, activation=<function relu at 0x0000024D90C00A68>)
+    (1): MyGraphConv_2_W(in=10, out=10, normalization=none, activation=<function relu at 0x0000024D90C00A68>)
   )
   (dropout): Dropout(p=0.0, inplace=False)
 )"
-USAir97_332.mat,directed,0.063172735,0.042136103,0.2147356510856881,0.7153669057880647,0.23598480471068214,"GCN(
+USAir97_332.mat,directed,0.063172735,0.06317273,0.2147356510856881,1.0,0.23598480471068214,"GCN(
   (layers): ModuleList(
-    (0): MyGraphConv_2_W(in=108, out=108, normalization=both, activation=<function relu at 0x000001652C52E048>)
-    (1): Nomalized_Output(in=108, out=108, normalization=both, activation=<function relu at 0x000001652C52E048>)
+    (0): MyGraphConv_2_W(in=108, out=108, normalization=none, activation=<function relu at 0x0000024D90C00A68>)
+    (1): MyGraphConv_2_W(in=108, out=108, normalization=none, activation=<function relu at 0x0000024D90C00A68>)
   )
   (dropout): Dropout(p=0.0, inplace=False)
 )"
-USairports_1858.mat,directed,0.18115743,-6.749529e-06,0.2755243410438753,0.002136566389098775,0.3459856263355043,"GCN(
+USairports_1858.mat,directed,0.18115743,,0.2755243410438753,0.8911787658374426,0.3459856263355043,"GCN(
   (layers): ModuleList(
-    (0): MyGraphConv_2_W(in=816, out=816, normalization=both, activation=<function relu at 0x000001652C52E048>)
-    (1): Nomalized_Output(in=816, out=816, normalization=both, activation=<function relu at 0x000001652C52E048>)
+    (0): MyGraphConv_2_W(in=816, out=816, normalization=none, activation=<function relu at 0x0000024D90C00A68>)
+    (1): MyGraphConv_2_W(in=816, out=816, normalization=none, activation=<function relu at 0x0000024D90C00A68>)
   )
   (dropout): Dropout(p=0.0, inplace=False)
 )"

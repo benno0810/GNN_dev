@@ -1,9 +1,6 @@
-import pycombo
-from scipy import io
 import numpy as np
 import networkx as nx
 import os
-import community as community_louvain
 import pandas as pd
 import torch
 import time
@@ -19,58 +16,26 @@ from GraphSAGE.losses import compute_loss_multiclass
 from utils import *
 from model import *
 from loss import *
-import community as community_louvain
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
-from karateclub import LabelPropagation
 
-
-def check_symmetric(a, tol=1e-8):
-    return np.all(np.abs(a - a.T) < tol)
-
-
-def loadNetworkMat(filename,
-                   path='/Users/stanislav/Desktop/NYU/NYURESEARCH/STRATEGIC_RESEARCH/ModularityMaximum/SampleNetworks/ProcessedMat/'):
-    A = io.loadmat(path + filename)
-    if check_symmetric(A['net']):
-        G = nx.from_numpy_matrix(A['net'])
-    else:
-        G = nx.from_numpy_matrix(A['net'], create_using=nx.DiGraph)
-    return G
-
-
-def getNewComboPartition(G, maxcom=-1, suppressCppOutput=False):
-    # https://pypi.org/project/pycombo/
-    partition, modularity = pycombo.execute(G, return_modularity=True, max_communities=maxcom, random_seed=42)
-    return modularity, partition
-
-
-def getNewComboSeries(G, maxcom, tries=5, verbose=0):
-    part = [None] * tries
-    M = np.zeros(tries)
-    for i in range(tries):
-        M[i], part[i] = getNewComboPartition(G, maxcom)
-        # M[i] = modularity(G,part[i])
-        if verbose > 0:
-            print('Combo try {},mod={:.6f}'.format(i + 1, M[i]))
-    return part[np.argmax(M)]
-
-
-def tile_array(a, b0, b1):
-    pass
 
 
 def train(g, features, n_classes, in_feats, n_edges, labels, mask, Q, cuda, nn_model):
     # sethyperparameter
     dropout = 0.0
     gpu = 0
-    lr = 5e-4
-    n_epochs = 1000
+    lr = 0.0005
+    early_stop_rate=0.000005
+    n_epochs = 100
     n_hidden = features.shape[1]  # number of hidden nodes
-    n_layers = 0  # number of hidden layers
-    weight_decay = 5e-4  #
+    n_layers = 1  # number of hidden layers
+    weight_decay_gamma = 0.65 #
     self_loop = True  #
+    early_stop = True
+    visualize_model=False
     last_score = 0
+    step_size=int(n_epochs/10)
 
     if self_loop:
         g = dgl.add_self_loop(g)
@@ -96,9 +61,11 @@ def train(g, features, n_classes, in_feats, n_edges, labels, mask, Q, cuda, nn_m
                                n_hidden,
                                n_classes,
                                n_layers,
-                               F.elu,
+                               F.relu,
                                dropout)
-    if nn_model == 'RelGraphConv':
+        if cuda:
+            model.cuda()
+    else:
         model = eval(nn_model)(in_feat=in_feats,
                                out_feat=n_classes,
                                num_rels=3,
@@ -111,28 +78,24 @@ def train(g, features, n_classes, in_feats, n_edges, labels, mask, Q, cuda, nn_m
                                dropout=0.0,
                                layer_norm=False
                                )
+        if cuda:
+            model.cuda()
 
-    for p in model.parameters():
-        print(p)
-
-    print(model)
-    # kernal_weights_analysis(model)
-
-    # use crossentropyLoss as loss, must consider the permutations,
-    # loss_fcn = torch.th.nn.CrossEntropyLoss()
     loss_fcn = ModularityScore(n_classes, cuda)
-    if cuda:
-        model.cuda()
 
-    for p in loss_fcn.parameters():
-        print(p)
 
-    optimizer = torch.optim.Adam(model.parameters(),lr=lr)
-    #optimizer = torch.optim.SGD(model.parameters(), lr=lr)
+    if visualize_model:
+        print_parameter(model)
+        print_parameter(loss_fcn)
+
+    #optimizer = torch.optim.Adam(model.parameters(),lr=lr)
+    #apply weight_decay scheduler
+    optimizer = torch.optim.SGD(model.parameters(), lr=lr)
+    StepLR = torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=weight_decay_gamma)
+
     # train and evaluate (with modularity score and labels)
     dur = []
-    M = []
-    P = [[1], [2], [3], [4], [5], [6]]
+
 
 
     for epoch in range(n_epochs):
@@ -144,64 +107,40 @@ def train(g, features, n_classes, in_feats, n_edges, labels, mask, Q, cuda, nn_m
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        # C_out=C_construction(model,features)
+        StepLR.step()
 
-        # use eval_mask to see overfitting
-        # modularity_score = evaluate_M(C_hat[train_mask], Q, cuda)
         dur.append(time.time() - t0)
-        if epoch % 100 == 0:
-            # record modularity
-            # for i,p in enumerate(model.parameters()):
-            #    print(p)
-            #    P[i].append(np.mean(np.abs(p.grad.cpu().detach().numpy())))
-            eval_loss = evaluate_M(C_hat,Q,cuda)
-            print("Epoch {} | Time(s) {}  Train_Modularity {} | "
-                  "ETputs(KTEPS) {}".format(epoch, np.mean(dur), eval_loss,
-                                            n_edges / np.mean(dur) / 1000))
-            if abs((loss - last_score) / last_score) < 0.000005:
+        if epoch % step_size == 0:
+        #if epoch % 1 == 0:
+            if visualize_model:
+                print_parameter(model)
+                print_parameter(loss_fcn)
+            C_out,eval_loss = evaluate_M(C_hat,Q,cuda)
+            print("Epoch {} | Time(s) {}  Train_Modularity {} | True_Modularity {}"
+                  "ETputs(KTEPS) {}".format(epoch, np.mean(dur), eval_loss, -loss,
+                                             n_edges / np.mean(dur) / 1000))
+        if early_stop:
+            if abs((loss - last_score) / last_score) < 0.000005 or torch.isnan(loss).sum()>0:
+                loss=last_score
+                C_hat=last_C_hat
+                C_out, eval_loss = evaluate_M(C_hat, Q, cuda)
+                print("Epoch {} | Time(s) {}  Train_Modularity {} | True_Modularity {}"
+                      "ETputs(KTEPS) {}".format(epoch, np.mean(dur), eval_loss, -loss,
+                                                n_edges / np.mean(dur) / 1000))
                 break
-            last_score = loss
-    C_hat = F.softmax(C_hat,dim=1)
-    print(C_hat)
+
+        last_score = loss
+        last_C_hat=C_hat
+
     #C_out = C_construction(model, features, mask)
-    #print(C_out)
-    modularity_init = evaluate_M(features, Q, cuda)
+
+    C_init,modularity_init = evaluate_M(features, Q, cuda)
     print('initial modularity is', modularity_init)
-    modularity_score = evaluate_M(C_hat, Q, cuda)
-    # with open('modularity_history.txt', 'w') as f:
-    #     for line in M:
-    #         f.write(line + '\n')
-    # f.close()
-    return modularity_score.cpu().detach().numpy(), C_out.cpu(), model.__str__(),features.cpu()
-
-
-def generate_model_input(nx_g):
-    # load cora_binary, train_masks,val_masks,test_masks are used for future accuracy comparement with supervised algorithm
-    # g, features, n_classes, in_feats, n_edges,labels = load_cora_binary()
-    # g, features, n_classes, in_feats, n_edges, labels = load_kara()
-    # g, features, n_classes, in_feats, n_edges, labels=load_les_miserables()
-    # g, features, n_classes, in_feats, n_edges, labels = load_citation_graph()
-
-    g = dgl.from_networkx(nx_g)
-    n_classes = getattr(g, 'num_classes', 3)
-
-    n_edges = g.number_of_edges()
-    n = len(nx_g)
-    default_labels = torch.LongTensor([1] * n)
-    if 'label' not in g.ndata:
-        g.ndata['label'] = default_labels
-    labels = g.ndata['label']
-    # construct initial features, train,val,test masks
-    g.ndata['feat'] = g.adj().to_dense()
-    # test=g.adj()
-    in_feats = g.adj().shape[1]
-    # this features is not efficient
-    features = g.ndata['feat']
-    mask = [True] * n
-
-    # graph visualization
-    # visualize(labels,g)
-    return g, features, n_classes, in_feats, n_edges, labels
+    C_hat,modularity_score = evaluate_M(C_hat, Q, cuda)
+    if torch.isnan(modularity_score):
+        modularity_score=loss
+    print(C_hat)
+    return modularity_score.cpu().detach().numpy(), C_hat.cpu(), model.__str__(),features.cpu()
 
 
 def main(nx_g, nn_model):
@@ -212,129 +151,8 @@ def main(nx_g, nn_model):
     else:
         cuda = True
     # prepare training data, set hyperparameters
-
-    g, features, n_classes, in_feats, n_edges, labels = generate_model_input(nx_g)
-
-    # calculate matrix Q, initial community attachment C (with overlap)
-    # overwrite n_classes
-    n = len(g)
-    mask = [True] * n
-    mask = th.BoolTensor(mask)
-    Q = {}
-    Q = Q2(g, mask)
-    Q = th.from_numpy(Q)
-
-    # generate input features (community binary partition vector) based on louvain partition
-    if nx.classes.function.is_directed(G):
-        model = LabelPropagation()
-        model.fit(G)
-        partition = model.get_memberships()
-        # modularity,partition=getNewComboPartition(G)
-    else:
-        partition = community_louvain.best_partition(G)
-
-    n_classes = np.max(list(partition.values())) + 1
-    C_init = Q[0:n_classes] * 0
-
-    C_init = C_init.T
-    for node in partition.keys():
-        C_init[node][partition[node]] = 1
-    # try C*C.T
-    # squezz for matrix that are all zeros
-    C_init = C_init.T
-    C_init = C_init[~(C_init == 0).all(1)]
-    C_init = C_init.T
-    modularity_classic = evaluate_M(C_init,Q,cuda)
-    # add zero columns to create possibility ratio set to 100%
-    scale_ratio = 2
-    # C_init=th.cat((C_init,C_init),dim=1)
-
-    features = C_init.float()
-    # scale_up the features
-    features = features.view(1, 1, features.shape[0], features.shape[1])
-    shape = (features.shape[-2], features.shape[-1] * scale_ratio)
-    features = th.nn.functional.interpolate(features, size=shape)
-    features = features.view(shape)/scale_ratio
-    # features=th.matmul(features,features.t())
-    n_classes = features.shape[1]
-    in_feats = features.shape[1]
-
-
-
+    g, features, n_classes, in_feats, n_edges, labels,Q,mask,modularity_classic = generate_model_input(nx_g,cuda)
     return train(g, features, n_classes, in_feats, n_edges, labels, mask, Q, cuda, nn_model),modularity_classic
-
-
-def partition_to_binary_attachment(partition):
-    row_length = len(partition.keys())
-    column_length = np.max(list(partition.values())) + 1
-    C_init = np.zeros((row_length, column_length), dtype=float)
-    for node in partition.keys():
-        C_init[node][partition[node]] = 1
-    # try C*C.T
-    # squezz for matrix that are all zeros
-    C_init = C_init.T
-    C_init = C_init[~(C_init == 0).all(1)]
-    C_init = C_init.T
-
-    return th.LongTensor(C_init)
-
-
-def save_result(data_name, graph_type, modularity_scores_gcn,
-                modularity_scores_combo, modularity_scores_classic,nmi_gcn,nmi,model_parameter,
-                data_dir):
-    """
-    :param modularity:  dict, modularity score
-    :param C: dict, binary attachment of communities for every nodes
-    :param dict, model_structure: GCN layer dims
-    :param file_name: str filename
-    :return:
-    """
-    file_d = data_dir + "/result1"
-    if not os.path.exists(file_d):
-        os.mkdir(file_d)
-    # save_modularity,C,model_structure
-    result_path = file_d + "/result.csv"
-    #graph_type_df = pd.DataFrame.from_dict(graph_type, orient='index', columns='graph_type')
-    graph_type_df = pd.DataFrame(list(graph_type.values()),index = list(graph_type.keys()),columns=['graph_type'])
-    modularity_gcn_df = pd.DataFrame(list(modularity_scores_gcn.values()),  index = list(modularity_scores_gcn.keys()),columns=['modularity_gcn'])
-    modularity_combo_df = pd.DataFrame(list(modularity_scores_combo.values()), index=list(modularity_scores_combo.keys()),
-                                     columns=['modularity_combo'])
-    modularity_classic_df = pd.DataFrame(list(modularity_scores_classic.values()), index=list(modularity_scores_classic.keys()),
-                                     columns=['modularity_classic'])
-    nmi_gcn_df = pd.DataFrame(list(nmi_gcn.values()),  index = list(nmi_gcn.keys()),columns=['NMI_gcn'])
-    nmi_df=pd.DataFrame(list(nmi.values()),  index = list(nmi.keys()),columns=['NMI'])
-    model_df = pd.DataFrame(list(model_parameter.values()), index = list(model_parameter.keys()),columns=['model_parameter'])
-    result_metrics = pd.concat([graph_type_df, modularity_classic_df,modularity_gcn_df,modularity_combo_df,nmi_gcn_df,nmi_df, model_df],axis=1)
-    result_metrics.to_csv(result_path, encoding='utf-8')
-    """
-    modularity_path=file_d+"/"+file_name+"_modularity"+".txt"
-    with open(modularity_path,'w+',encoding='utf-8') as f:
-        f.write(str(modularity))
-    f.close()
-    C_path=file_d+"/"+file_name+"_C"+".txt"
-    np.savetxt(C_path,C)
-    model_structure_path=file_d+"/"+file_name+"_model_structure"+".txt"
-    #np.savetxt(model_structure_path,model_structure)
-    with open(model_structure_path,'w+',encoding='utf-8') as f:
-        f.write(model_structure)
-    f.close()
-    """
-
-    return
-
-
-def save_result_combo(data_name, graph_type, modularity, C, data_dir):
-    file_d = data_dir + "/result1"
-    if not os.path.exists(file_d):
-        os.mkdir(file_d)
-    # save_modularity,C,model_structure
-    modularity_path = file_d + "/" + file_name + "_modularity_combo" + ".txt"
-    with open(modularity_path, 'w+', encoding='utf-8') as f:
-        f.write(str(modularity))
-    f.close()
-    C_path = file_d + "/" + file_name + "_C_combo" + ".txt"
-    np.savetxt(C_path, C)
-    return
 
 
 if __name__ == "__main__":
@@ -362,7 +180,7 @@ if __name__ == "__main__":
             #     continue
             if file[-3:] == 'mat':
                 #append dataset name list
-                if file !='karate_34.mat':
+                if file !='USairports_1858.mat':
                     continue
                 data_name.append(file)
                 G = loadNetworkMat(file, data_dir)
@@ -380,25 +198,10 @@ if __name__ == "__main__":
                 nmi_gcn[file]=NMI(C_out[file],C_init[file])
                 nmi[file] = NMI(C_out_combo[file], C_init[file])
 
+
+
+    ##save log
     save_result(data_name, graph_type, modularity_scores_gcn, modularity_scores_combo, modularity_scores_classic,nmi_gcn,nmi,model_parameter,
                 data_dir)
 
-    ##save log
-
-    #save_result_combo(data_name, graph_type, modularity_scores_combo[file], C_outs_combo[file], data_dir)
-
     print('something')
-    # pytorch.SAGEConv()
-    # pytorch.SGConv()
-    # pytorch.NNConv()
-    # pytorch.GINConv()
-    # pytorch.APPNPConv()
-
-    # plt.subplot(111)
-    # nx.draw(G)
-    # plt.show()
-    #
-    # modularity_score_combo,part1=getNewComboPartition(G)
-    # main(G)
-    # for i in range(test_number):
-    #     continue

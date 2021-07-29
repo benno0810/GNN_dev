@@ -66,8 +66,8 @@ def train(g, features, n_classes, in_feats, n_edges, labels, mask, Q, cuda, nn_m
     # sethyperparameter
     dropout = 0.0
     gpu = 0
-    lr = 0.05
-    n_epochs = 1000
+    lr = 0.005
+    n_epochs = 100
     n_hidden = features.shape[1]  # number of hidden nodes
     n_layers = 0  # number of hidden layers
     weight_decay = 5e-4  #
@@ -130,7 +130,8 @@ def train(g, features, n_classes, in_feats, n_edges, labels, mask, Q, cuda, nn_m
     for p in loss_fcn.parameters():
         print(p)
 
-    optimizer = torch.optim.Adam(model.parameters(),lr=lr)
+    #optimizer = torch.optim.Adam(model.parameters(),lr=lr)
+    optimizer = torch.optim.SGD(model.parameters(), lr=lr)
     #apply weight_decay scheduler
     StepLR = torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=0.65)
     #optimizer = torch.optim.SGD(model.parameters(), lr=lr)
@@ -155,7 +156,8 @@ def train(g, features, n_classes, in_feats, n_edges, labels, mask, Q, cuda, nn_m
         # use eval_mask to see overfitting
         # modularity_score = evaluate_M(C_hat[train_mask], Q, cuda)
         dur.append(time.time() - t0)
-        if epoch % step_size == 0:
+        #if epoch % step_size == 0:
+        if epoch % 1 == 0:
             # record modularity
             # for i,p in enumerate(model.parameters()):
             #    print(p)
