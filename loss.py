@@ -2,11 +2,12 @@ from model import *
 from utils import *
 
 class ModularityScore(th.nn.Module):
-    def __init__(self,n_classes,cuda):
+    def __init__(self,n_classes,cuda,direction):
         super(ModularityScore, self).__init__()
         ## define C as parameter
         #self.params = th.nn.ParameterList([C])
         self.cuda=cuda
+        self.direction=direction
 
 
     def forward(self,C,Q):
@@ -17,7 +18,7 @@ class ModularityScore(th.nn.Module):
             C=C.cuda()
             Q=Q.cuda()
         temp = th.matmul(th.matmul(C.t(), Q), C)
-        loss = temp.trace()
+        loss = self.direction*temp.trace()
         return loss
 
 

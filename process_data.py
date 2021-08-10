@@ -27,7 +27,8 @@ def train(g, features, n_classes, in_feats, n_edges, labels, mask, Q, cuda, nn_m
     gpu = 0
     lr = 0.0005
     early_stop_rate=0.000005
-    n_epochs = 100
+    loss_direction=-1 #
+    n_epochs = 10000
     n_hidden = features.shape[1]  # number of hidden nodes
     n_layers = 1  # number of hidden layers
     weight_decay_gamma = 0.65 #
@@ -35,8 +36,9 @@ def train(g, features, n_classes, in_feats, n_edges, labels, mask, Q, cuda, nn_m
     early_stop = True
     visualize_model=False
     last_score = 0
-    step_size=int(n_epochs/10)
+    step_size=int(n_epochs/100)
 
+    # step_size = 1
     if self_loop:
         g = dgl.add_self_loop(g)
     # run single train of some model
@@ -81,7 +83,7 @@ def train(g, features, n_classes, in_feats, n_edges, labels, mask, Q, cuda, nn_m
         if cuda:
             model.cuda()
 
-    loss_fcn = ModularityScore(n_classes, cuda)
+    loss_fcn = ModularityScore(n_classes, cuda,loss_direction)
 
 
     if visualize_model:
@@ -117,7 +119,7 @@ def train(g, features, n_classes, in_feats, n_edges, labels, mask, Q, cuda, nn_m
                 print_parameter(loss_fcn)
             C_out,eval_loss = evaluate_M(C_hat,Q,cuda)
             print("Epoch {} | Time(s) {}  Train_Modularity {} | True_Modularity {}"
-                  "ETputs(KTEPS) {}".format(epoch, np.mean(dur), eval_loss, -loss,
+                  "ETputs(KTEPS) {}".format(epoch, np.mean(dur), eval_loss, abs(loss),
                                              n_edges / np.mean(dur) / 1000))
         if early_stop:
             if abs((loss - last_score) / last_score) < 0.000005 or torch.isnan(loss).sum()>0:
@@ -125,7 +127,7 @@ def train(g, features, n_classes, in_feats, n_edges, labels, mask, Q, cuda, nn_m
                 C_hat=last_C_hat
                 C_out, eval_loss = evaluate_M(C_hat, Q, cuda)
                 print("Epoch {} | Time(s) {}  Train_Modularity {} | True_Modularity {}"
-                      "ETputs(KTEPS) {}".format(epoch, np.mean(dur), eval_loss, -loss,
+                      "ETputs(KTEPS) {}".format(epoch, np.mean(dur), eval_loss, abs(loss),
                                                 n_edges / np.mean(dur) / 1000))
                 break
 
@@ -180,8 +182,8 @@ if __name__ == "__main__":
             #     continue
             if file[-3:] == 'mat':
                 #append dataset name list
-                if file !='USairports_1858.mat':
-                    continue
+                # if file !='karate_34.mat':
+                #     continue
                 data_name.append(file)
                 G = loadNetworkMat(file, data_dir)
                 if nx.classes.function.is_directed(G):

@@ -593,7 +593,7 @@ class MyGraphConv_2_W(GraphConv):
                 rst = self._activation(rst)
                 #normalize to 1
                 #cannot differentiate
-                temp=rst.sum(dim=1).unsqueeze(1).cpu().detach().cuda()
+                temp=rst.sum(dim=1).unsqueeze(1).cpu().detach().cuda()+0.000005
                 rst = rst/temp
 
             return rst

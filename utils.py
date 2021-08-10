@@ -20,6 +20,23 @@ from sklearn.metrics.cluster import normalized_mutual_info_score
 from karateclub import LabelPropagation
 import community as community_louvain
 import random
+
+
+def gaussian(x, y=0,level=1,mu=0,sigma=1):
+    """
+    calculate gaussian filter kernal
+    :param sigma: standard deviation of gaussian distribution
+    :param level: 1: 1-d kernal, 2: 2-d kernal
+    :param x:
+    :param y:
+    :return: gaussian kernal
+    """
+    if level == 1:
+        return np.exp(-((x - mu)**2)/(2*sigma**2)) / (sigma * np.sqrt(2*np.pi))
+    elif level == 2:
+        return 1 / (2 * np.pi * sigma * sigma) * np.exp(
+            -((x-mu) ** 2 + (y-mu) ** 2) / 2 / sigma / sigma)
+
 def print_parameter(model):
     for p in model.parameters():
         print(p)
@@ -353,20 +370,19 @@ def generate_model_input(nx_g,cuda):
     # C_init=th.cat((C_init,C_init),dim=1)
 
     features = C_init.float()
-    # scale_up the features
-    # original dim of feature,[X,Y], new dim of feature: [1,1,X,Y]
-    features = features.view(1, 1, features.shape[0], features.shape[1])
-    shape = (features.shape[-2], features.shape[-1] * scale_ratio)
-    features = th.nn.functional.interpolate(features, size=shape)
-    # features = features.view(shape)/scale_ratio
-    # reduce the dim of features to [X,Y]
-    features = features.view(shape)
-    temp = features * 0
-    # find largest position of features [x,y]for every row(x), then add a new dim to let the label size=[x,1]
-    feature_labels = features.argmax(1).unsqueeze(1)
-    features = temp.scatter(1, feature_labels, 1)
+    # # scale_up the features
+    # # original dim of feature,[X,Y], new dim of feature: [1,1,X,Y]
+    # features = features.view(1, 1, features.shape[0], features.shape[1])
+    # shape = (features.shape[-2], features.shape[-1] * scale_ratio)
+    # features = th.nn.functional.interpolate(features, size=shape)
+    # # features = features.view(shape)/scale_ratio
+    # # reduce the dim of features to [X,Y]
+    # features = features.view(shape)
+    # temp = features * 0
+    # # find largest position of features [x,y]for every row(x), then add a new dim to let the label size=[x,1]
+    # feature_labels = features.argmax(1).unsqueeze(1)
+    # # features = temp.scatter(1, feature_labels, 1)
 
-    # features=th.matmul(features,features.t())
     n_classes = features.shape[1]
     in_feats = features.shape[1]
 
