@@ -27,18 +27,18 @@ def train(g, features, n_classes, in_feats, n_edges, labels, mask, Q, cuda, nn_m
     gpu = 0
     lr = 0.0005
     early_stop_rate=0.000005
-    loss_direction=-1 #
-    n_epochs = 10000
+    loss_direction= 1 #
+    n_epochs = 4
     n_hidden = features.shape[1]  # number of hidden nodes
     n_layers = 1  # number of hidden layers
     weight_decay_gamma = 0.65 #
     self_loop = True  #
-    early_stop = True
-    visualize_model=False
+    early_stop = False
+    visualize_model=True
     last_score = 0
-    step_size=int(n_epochs/100)
+    #step_size=int(n_epochs/100)
 
-    # step_size = 1
+    step_size = 1
     if self_loop:
         g = dgl.add_self_loop(g)
     # run single train of some model
@@ -98,12 +98,18 @@ def train(g, features, n_classes, in_feats, n_edges, labels, mask, Q, cuda, nn_m
     # train and evaluate (with modularity score and labels)
     dur = []
 
+    print(features)
+    print("#####################")
+
 
 
     for epoch in range(n_epochs):
+
         model.train()
         t0 = time.time()
         C_hat = model(features)
+        print('#############WX###################')
+        print(C_hat)
         # use train_mask to train
         loss = loss_fcn(C_hat[mask], Q)
         optimizer.zero_grad()
@@ -113,21 +119,27 @@ def train(g, features, n_classes, in_feats, n_edges, labels, mask, Q, cuda, nn_m
 
         dur.append(time.time() - t0)
         if epoch % step_size == 0:
+
+
         #if epoch % 1 == 0:
-            if visualize_model:
-                print_parameter(model)
-                print_parameter(loss_fcn)
+            # if visualize_model:
+            #     print_parameter(model)
+            #     print_parameter(loss_fcn)
             C_out,eval_loss = evaluate_M(C_hat,Q,cuda)
-            print("Epoch {} | Time(s) {}  Train_Modularity {} | True_Modularity {}"
-                  "ETputs(KTEPS) {}".format(epoch, np.mean(dur), eval_loss, abs(loss),
-                                             n_edges / np.mean(dur) / 1000))
+        if epoch == 0:
+            print('calculate the modularity from classic method')
+            ground_truth_modularity = eval_loss
+        print("Epoch {} | Time(s) {} | Train_Modularity {} | True_Modularity {} | Ground_Truth_Modulairty {} | ETputs(KTEPS) {}".format(epoch, np.mean(dur), eval_loss, (loss),
+                                                                                                                                        ground_truth_modularity,
+                                         n_edges / np.mean(dur) / 1000))
         if early_stop:
             if abs((loss - last_score) / last_score) < 0.000005 or torch.isnan(loss).sum()>0:
                 loss=last_score
                 C_hat=last_C_hat
                 C_out, eval_loss = evaluate_M(C_hat, Q, cuda)
-                print("Epoch {} | Time(s) {}  Train_Modularity {} | True_Modularity {}"
-                      "ETputs(KTEPS) {}".format(epoch, np.mean(dur), eval_loss, abs(loss),
+
+                print("Epoch {} | Time(s) {}  Train_Modularity {} | True_Modularity {}" |
+                      "ETputs(KTEPS) {}".format(epoch, np.mean(dur), eval_loss, (loss),
                                                 n_edges / np.mean(dur) / 1000))
                 break
 
@@ -182,8 +194,8 @@ if __name__ == "__main__":
             #     continue
             if file[-3:] == 'mat':
                 #append dataset name list
-                # if file !='karate_34.mat':
-                #     continue
+                if file !='karate_34.mat':
+                    continue
                 data_name.append(file)
                 G = loadNetworkMat(file, data_dir)
                 if nx.classes.function.is_directed(G):

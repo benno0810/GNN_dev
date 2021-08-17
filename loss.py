@@ -7,6 +7,7 @@ class ModularityScore(th.nn.Module):
         ## define C as parameter
         #self.params = th.nn.ParameterList([C])
         self.cuda=cuda
+
         self.direction=direction
 
 
@@ -18,7 +19,11 @@ class ModularityScore(th.nn.Module):
             C=C.cuda()
             Q=Q.cuda()
         temp = th.matmul(th.matmul(C.t(), Q), C)
-        loss = self.direction*temp.trace()
+        if self.direction ==-1:
+            loss = 1-temp.trace()
+        elif self.direction==1:
+                loss = temp.trace()
+
         return loss
 
 
