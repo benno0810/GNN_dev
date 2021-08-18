@@ -5,7 +5,7 @@ class InitLearningRate():
             'jazz_198': 5e-5,
             'lesmis_77': 5e-4,
             'copperfield_112': 5e-3,
-            'celeganmetabolic_453': 5e-3,
+            'celeganmetabolic_453': 5e-7,
             'celegansneural_297': 1e-5,
             'email_1133': 5e-4,
             'USAir97_332': 1e-5,

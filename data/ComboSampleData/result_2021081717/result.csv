@@ -1,0 +1,2 @@
+,initial_partition_approach,number_of_communities,initial modularity,modularity after fine-tuning and binary assigned,modularity after fine-tuning,COMBO modularity_not_restricted,COMBO modularity
+USairports_1858.mat,LPA,408,0.18115743,0.18115734,0.004143092781305313,0.2755243410438753,0.2755202783235524

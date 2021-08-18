@@ -54,8 +54,8 @@ if __name__ == "__main__":
             #     continue
             if file[-3:] == 'mat':
                 #append dataset name list
-                # if 'jazz_198' not in file:
-                #     continue
+                if 'USairports_1858' not in file:
+                    continue
                 data_name.append(file)
                 G = loadNetworkMat(file, data_dir)
                 if nx.classes.function.is_directed(G):

@@ -25,7 +25,7 @@ def train(g, features, n_classes, in_feats, n_edges, labels, mask, Q, args):
     gpu = 0
     early_stop_rate = 0.000005
     loss_direction = 1
-    n_epochs = 100
+    n_epochs = 1000
     n_hidden = features.shape[1]  # number of hidden nodes
     n_layers = 0  # number of hidden layers
     weight_decay_gamma = 0.65  #
@@ -118,6 +118,39 @@ def train(g, features, n_classes, in_feats, n_edges, labels, mask, Q, args):
         # print(C_hat)
         # use train_mask to train
         loss = loss_fcn(C_hat[mask], Q)
+        if epoch>0 and early_stop:
+            if lr<1e-7:
+                print('loss less than 1e-10 training end')
+                break
+            if (abs(loss - last_score) /last_score) <0.1*lr:
+                print('lr too large, set to {}'.format(0.1*lr))
+                #print('rule value', ((loss - last_score) / last_score))
+                # loss = last_score
+                # C_hat = last_C_hat
+                # C_out, eval_loss = evaluate_M(C_hat, Q, cuda)
+                #print('loss before {}'.format(loss_fcn( model(features)[mask], Q)))
+                optimizer = mySGD(model.parameters(), lr=lr, batch_size=features.shape[0],
+                                  grad_direction=-grad_direction)
+                #add back  reverse the parameters change
+                optimizer.step()
+                #print('after {}'.format(loss_fcn( model(features)[mask], Q)))
+                #set lr to lower value
+                lr = 0.1 * lr
+                optimizer = mySGD(model.parameters(), lr=lr, batch_size=features.shape[0],
+                                  grad_direction=grad_direction)
+
+                print(
+                    "Epoch {} | Time(s) {} |  True_Modularity {} | Ground_Truth_Modulairty {} | ETputs(KTEPS) {}".format(
+                        epoch,
+                        np.mean(
+                            dur),
+                        (loss),
+                        ground_truth_modularity,
+                        n_edges / np.mean(
+                            dur) / 1000))
+
+
+                continue
         # if loss jump check parameters
         if epoch == 0:
             print("initial output WX : \n", C_hat)
@@ -150,23 +183,7 @@ def train(g, features, n_classes, in_feats, n_edges, labels, mask, Q, args):
                                                                                                                  ground_truth_modularity,
                                                                                                                  n_edges / np.mean(
                                                                                                                      dur) / 1000))
-        if epoch>0 and early_stop:
-            if ((loss - last_score) / last_score) < -1e-3 :
-                loss = last_score
-                C_hat = last_C_hat
-                C_out, eval_loss = evaluate_M(C_hat, Q, cuda)
 
-                print(
-                    "Epoch {} | Time(s) {} |  True_Modularity {} | Ground_Truth_Modulairty {} | ETputs(KTEPS) {}".format(
-                        epoch,
-                        np.mean(
-                            dur),
-                        (loss),
-                        ground_truth_modularity,
-                        n_edges / np.mean(
-                            dur) / 1000))
-
-                break
         if cache_middle_result:
             M.append(loss.item())
 
@@ -191,8 +208,8 @@ def main(nx_g, nn_model, grad_direction,data_dir,dataset):
     init_lr = InitLearningRate()
     cache_middle_result=True
     middle_result = {}
-    lr_mode = 'scanning'
-    lr = np.logspace(-5, 1, num=14)
+    lr_mode = 'training'
+    lr = np.logspace(-10, -2, num=14)
     print(lr)
     gpu = 0
 

@@ -24,7 +24,7 @@ import random
 
 class mySGD():
     def __init__(self, params, lr, batch_size, grad_direction=1):
-        print('using self written gradient dec func')
+        #print('using self written gradient dec func')
         self.params = list(params)
         self.lr = lr
         self.batch_size = batch_size
