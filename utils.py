@@ -43,13 +43,6 @@ class mySGD():
                 param.grad.zero_()
 
 
-def sgd(params, lr, batch_size):
-    """Minibatch stochastic gradient descent."""
-    with torch.no_grad():
-        for param in params:
-            param -= lr * param.grad / batch_size
-            param.grad.zero_()
-
 
 def gaussian(x, y=0, level=1, mu=0, sigma=1):
     """
@@ -344,7 +337,7 @@ def getNewComboSeries(G, maxcom, tries=5, verbose=0):
     return part[np.argmax(M)]
 
 
-def generate_model_input(nx_g, cuda, perturbation=True):
+def generate_model_input(nx_g, cuda, perturbation=True,strong_perturbation=True, random_input=False):
     """
     generate initial input community attachment from some classic methods. add zero columns according to scale ratios
     this is for creating input for arbitrary community numbers prior
@@ -393,12 +386,17 @@ def generate_model_input(nx_g, cuda, perturbation=True):
         model.fit(nx_g)
         partition = model.get_memberships()
         # modularity,partition=getNewComboPartition(nx_g)
+        n_classes = np.max(list(partition.values())) + 1
+        C_init = Q[0:n_classes] * 0
+        C_init = C_init.T
+        for node in partition.keys():
+            C_init[node][partition[node]] = 1.0
+        _,max_modularity = evaluate_M(C_init,Q,cuda)
     else:
         # iterate 10 times to find the best partitions for louvain method:
         max_modularity = -999
         partition = {}
         for i in range(10):
-
             temp = community_louvain.best_partition(nx_g)
             temp_score = community_louvain.modularity(temp, nx_g)
             if temp_score > max_modularity:
@@ -407,31 +405,36 @@ def generate_model_input(nx_g, cuda, perturbation=True):
 
     n_classes = np.max(list(partition.values())) + 1
     C_init = Q[0:n_classes] * 0
-
     C_init = C_init.T
     for node in partition.keys():
-        C_init[node][partition[node]] = 1.0
+        if random_input:
+            continue
+        else:
+            C_init[node][partition[node]] = 1.0
     C_init = C_init.T
     C_init = C_init[~(C_init == 0).all(1)]
     C_init = C_init.T
     if perturbation:
         for node in partition.keys():
-            # use gaussian convolusion to relax the binary attachment to gaussian distribution
-            signal_length = C_init.shape[1]
-            x = np.arange(0, 2 * signal_length + 1)
-            x = x - x.mean()
-            # we can set it compared to length of the signal, or we can set it to fix number
-            sigma = x.std() * 0.05
-            mu = x.mean()
-            pdf = gaussian(x=x, mu=mu, sigma=sigma)
-            res = np.convolve(C_init[node], pdf)
-            res = res[0 + signal_length:signal_length + signal_length]
-            res = res / res.sum()
-            res = th.DoubleTensor(res)
-            C_init[node] = res
-    # squezz for matrix that are all zeros
+            if strong_perturbation:
+                community_number = C_init.shape[1]
+                C_init[node][random.randint(0, community_number - 1)] = 1.0
+            else:
+                # use gaussian convolusion to relax the binary attachment to gaussian distribution
+                signal_length = C_init.shape[1]
+                x = np.arange(0, 2 * signal_length + 1)
+                x = x - x.mean()
+                # we can set it compared to length of the signal, or we can set it to fix number
+                sigma = x.std() * 10
+                mu = x.mean()
+                pdf = gaussian(x=x, mu=mu, sigma=sigma)
+                res = np.convolve(C_init[node], pdf)
+                res = res[0 + signal_length:signal_length + signal_length]
+                res = res / res.sum()
+                res = th.DoubleTensor(res)
+                C_init[node] = res
 
-    C_out, modularity_classic = evaluate_M(C_init, Q, cuda)
+    # squezz for matrix that are all zeros
     # add zero columns to create possibility ratio set to 100%
     scale_ratio = 2
     # C_init=th.cat((C_init,C_init),dim=1)
@@ -453,7 +456,7 @@ def generate_model_input(nx_g, cuda, perturbation=True):
     n_classes = features.shape[1]
     in_feats = features.shape[1]
 
-    return g, features, n_classes, in_feats, n_edges, labels, Q, mask, modularity_classic
+    return g, features, n_classes, in_feats, n_edges, labels, Q, mask, max_modularity
 
 
 def save_result(data_name, graph_type, modularity_scores_gcn,

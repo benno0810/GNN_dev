@@ -1,44 +1,27 @@
-import numpy as np
-import networkx as nx
-import os
-import pandas as pd
-import time
-import math
-import dgl as dgl
-from dgl.nn import pytorch
-import numpy as np
-import torch as th
-import dgl.function as fn
-import torch.nn.functional as F
-from dgl.data import CoraGraphDataset
-from GraphSAGE.losses import compute_loss_multiclass
-from utils import *
-from model import *
-from loss import *
-import matplotlib.cm as cm
-import matplotlib.pyplot as plt
-from config import  InitLearningRate
 
-def train(g, features, n_classes, in_feats, n_edges, labels, mask, Q, args):
+import torch.optim.lr_scheduler
+from loss import *
+
+def train(g, features, n_classes, in_feats, n_edges, labels, mask, Q,modularity_classic, args):
     # sethyperparameter
     dropout = 0.0
     gpu = 0
-    early_stop_rate = 0.000005
-    loss_direction = 1
-    n_epochs = 1000
     n_hidden = features.shape[1]  # number of hidden nodes
     n_layers = 0  # number of hidden layers
-    weight_decay_gamma = 0.65  #
     self_loop = True  #
     early_stop = False
     visualize_model = False
     last_score = 0
 
     grad_direction = args['grad_direction']
+
     lr = args['lr']
     cuda = args['cuda']
     nn_model = args['nn_model']
     cache_middle_result=args['cache_middle_result']
+    n_epochs=args['n_epochs']
+    step_size = args['step_size']
+
     if 'early_stop' in args.keys():
         early_stop=args['early_stop']
     else:
@@ -48,7 +31,6 @@ def train(g, features, n_classes, in_feats, n_edges, labels, mask, Q, args):
 
     # step_size=int(n_epochs/100)
 
-    step_size = 1
     if self_loop:
         g = dgl.add_self_loop(g)
     # run single train of some model
@@ -73,34 +55,31 @@ def train(g, features, n_classes, in_feats, n_edges, labels, mask, Q, args):
                                dropout)
         if cuda:
             model.cuda()
-    else:
-        model = eval(nn_model)(in_feat=in_feats,
-                               out_feat=n_classes,
-                               num_rels=3,
-                               regularizer='basis',
-                               num_bases=None,
-                               bias=True,
-                               activation=None,
-                               self_loop=True,
-                               low_mem=False,
-                               dropout=0.0,
-                               layer_norm=False
-                               )
-        if cuda:
-            model.cuda()
-
-    loss_fcn = ModularityScore(n_classes, cuda, loss_direction)
+    loss_fcn = ModularityScore(n_classes, cuda, grad_direction)
 
     if visualize_model:
         print_parameter(model)
         print_parameter(loss_fcn)
 
-    # optimizer = torch.optim.Adam(model.parameters(),lr=lr)
+    #optimizer = torch.optim.Adam(model.parameters(),lr=lr)
+    optimizer = torch.optim.SGD(model.parameters(), lr=lr)
+    StepLR= torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer,
+                                                       mode='min',
+                                                       factor=0.1,
+                                                       patience=2,
+                                                       verbose=True,
+                                                       threshold=0.0001,
+                                                       threshold_mode='rel',
+                                                       cooldown=0,
+                                                       min_lr=1e-10,
+                                                       eps=1e-10
+                                                       )
+
     # apply weight_decay scheduler
     # use self written D method
     # optimizer = torch.optim.SGD(model.parameters(), lr=lr)
     # StepLR = torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=weight_decay_gamma)
-    optimizer = mySGD(model.parameters(), lr=lr, batch_size=features.shape[0], grad_direction=grad_direction)
+    # optimizer = mySGD(model.parameters(), lr=lr, batch_size=features.shape[0], grad_direction=grad_direction)
 
     # train and evaluate (with modularity score and labels)
     dur = []
@@ -119,39 +98,18 @@ def train(g, features, n_classes, in_feats, n_edges, labels, mask, Q, args):
         # use train_mask to train
         loss = loss_fcn(C_hat[mask], Q)
         if epoch>0 and early_stop:
-            if lr<1e-7:
-                print('loss less than 1e-10 training end')
-                break
-            if (abs(loss - last_score) /last_score) <0.1*lr:
-                print('lr too large, set to {}'.format(0.1*lr))
-                #print('rule value', ((loss - last_score) / last_score))
-                # loss = last_score
-                # C_hat = last_C_hat
-                # C_out, eval_loss = evaluate_M(C_hat, Q, cuda)
-                #print('loss before {}'.format(loss_fcn( model(features)[mask], Q)))
-                optimizer = mySGD(model.parameters(), lr=lr, batch_size=features.shape[0],
-                                  grad_direction=-grad_direction)
-                #add back  reverse the parameters change
-                optimizer.step()
-                #print('after {}'.format(loss_fcn( model(features)[mask], Q)))
-                #set lr to lower value
-                lr = 0.1 * lr
-                optimizer = mySGD(model.parameters(), lr=lr, batch_size=features.shape[0],
-                                  grad_direction=grad_direction)
-
+            if optimizer.param_groups[0]['lr']<1e-8:
+                print('loss less than 1e-8 training end')
                 print(
                     "Epoch {} | Time(s) {} |  True_Modularity {} | Ground_Truth_Modulairty {} | ETputs(KTEPS) {}".format(
                         epoch,
                         np.mean(
                             dur),
-                        (loss),
-                        ground_truth_modularity,
+                        grad_direction*(loss),
+                        modularity_classic,
                         n_edges / np.mean(
                             dur) / 1000))
-
-
-                continue
-        # if loss jump check parameters
+                break
         if epoch == 0:
             print("initial output WX : \n", C_hat)
             print('initial parameters and gradients')
@@ -163,7 +121,8 @@ def train(g, features, n_classes, in_feats, n_edges, labels, mask, Q, args):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        # StepLR.step()
+        StepLR.step(loss)
+
 
         dur.append(time.time() - t0)
         if epoch % step_size == 0:
@@ -172,78 +131,52 @@ def train(g, features, n_classes, in_feats, n_edges, labels, mask, Q, args):
             #     print_parameter(model)
             #     print_parameter(loss_fcn)
             C_out, eval_loss = evaluate_M(C_hat, Q, cuda)
-        if epoch == 0:
-            # print('calculate the modularity from classic method')
-            ground_truth_modularity = eval_loss
-        print(
-            "Epoch {} | Time(s) {} |  True_Modularity {} | Ground_Truth_Modulairty {} | ETputs(KTEPS) {}".format(epoch,
-                                                                                                                 np.mean(
-                                                                                                                     dur),
-                                                                                                                 (loss),
-                                                                                                                 ground_truth_modularity,
-                                                                                                                 n_edges / np.mean(
+            print(
+                "Epoch {} | Time(s) {} |  True_Modularity {}"
+                " | Ground_Truth_Modulairty {} | ETputs(KTEPS) {}".format(epoch,
+                                                                    np.mean(dur),
+                                                                     grad_direction*(loss),
+                                                                     modularity_classic,
+                                                                     n_edges / np.mean(
                                                                                                                      dur) / 1000))
 
         if cache_middle_result:
-            M.append(loss.item())
+            M.append(-loss.item())
 
 
 
         last_score = loss
         last_C_hat = C_hat
 
-    # C_out = C_construction(model, features, mask)
-
     C_init, modularity_init = evaluate_M(features, Q, cuda)
+
     print('initial modularity is', modularity_init)
+    print(C_hat)
     C_hat, modularity_score = evaluate_M(C_hat, Q, cuda)
     if torch.isnan(modularity_score):
-        modularity_score = loss
-    print(C_hat)
+        print('use objective function as output')
+        modularity_score = grad_direction*loss
+
     return modularity_score.cpu().detach().numpy(), loss.item(),C_hat.cpu(), model.__str__(), features.cpu(),M
 
-
-def main(nx_g, nn_model, grad_direction,data_dir,dataset):
-    # note g is a networkx class
-    init_lr = InitLearningRate()
-    cache_middle_result=True
-    middle_result = {}
-    lr_mode = 'training'
-    lr = np.logspace(-10, -2, num=14)
-    print(lr)
-    gpu = 0
-
-    if gpu < 0:
-        cuda = False
-    else:
-        cuda = True
-    # prepare training data, set hyperparameters
-    g, features, n_classes, in_feats, n_edges, labels, Q, mask, modularity_classic = generate_model_input(nx_g, cuda)
-    if lr_mode == 'scanning':
-        print('learning_rate scanning mode for {} intervals from {} to {}'.format(len(lr), np.min(lr), np.max(lr)))
-        for i, learning_rate in enumerate(lr):
-            args = {
-                'lr': learning_rate,
-                'grad_direction': grad_direction,
-                'nn_model': nn_model,
-                'cuda': cuda,
-                'cache_middle_result':cache_middle_result
-            }
-            modularity_score,loss ,C_hat, model_structure, features, middle_result[args['lr']] = train(g, features, n_classes, in_feats, n_edges, labels, mask, Q, args)
-            if i == len(lr) - 1:
+def startTraining(nx_g,data_dir,dataset,args):
+    lr_range = np.logspace(-7,2,num=10)
+    g, features, n_classes, in_feats, n_edges, labels, Q, mask, modularity_classic =\
+        generate_model_input(nx_g, args['cuda'])
+    middle_result={}
+    if args['lr_mode'] == 'scanning':
+        print('learning_rate scanning mode for {} intervals from {} to {}'.
+              format(len(lr_range), np.min(lr_range), np.max(lr_range)))
+        for i, learning_rate in enumerate(lr_range):
+            args['learning_rate']=learning_rate
+            modularity_score,loss ,C_hat, model_structure, features, middle_result[args['lr']] = \
+                train(g, features, n_classes, in_feats, n_edges, labels, mask, Q, modularity_classic,args)
+            if i == len(lr_range) - 1:
                 save_middle_result(middle_result,data_dir,dataset)
                 return modularity_score,loss, C_hat, model_structure, features, modularity_classic, n_classes
-    if lr_mode =='training':
+    if args['lr_mode'] =='training':
         print('all initial rating tuned, now start to learn')
-        for i, learning_rate in enumerate(lr):
-            args = {
-                'lr': init_lr.get_init_lr(dataset),
-                'grad_direction': grad_direction,
-                'nn_model': nn_model,
-                'cuda': cuda,
-                'cache_middle_result':cache_middle_result,
-                'early_stop':True
-            }
-            #modularity_score.cpu().detach().numpy(), C_hat.cpu(), model.__str__(), features.cpu(),M
-            modularity_score,loss ,C_hat, model_structure, features, middle_result[args['lr']]= train(g, features, n_classes, in_feats, n_edges, labels, mask, Q, args)
-            return modularity_score,loss, C_hat, model_structure, features, modularity_classic, n_classes
+        #modularity_score.cpu().detach().numpy(), C_hat.cpu(), model.__str__(), features.cpu(),M
+        modularity_score,loss ,C_hat, model_structure, features, middle_result[args['lr']]= \
+            train(g, features, n_classes, in_feats, n_edges, labels, mask, Q, modularity_classic,args)
+        return modularity_score,loss, C_hat, model_structure, features, modularity_classic, n_classes

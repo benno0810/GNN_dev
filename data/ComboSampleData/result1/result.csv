@@ -1,7 +1,61 @@
 ,graph_type,modularity_classic,modularity_gcn,modularity_combo,modularity_combo_restricted,NMI_gcn,NMI,model_parameter
-USairports_1858.mat,directed,0.18115743,0.18115734,0.2755243410438753,0.2755202783235524,1.0,0.3459856263355043,"GCN(
+celeganmetabolic_453.mat,directed,0.2129949927330017,0.17838645,0.4514651083433376,0.48643226852002347,0.47262037846263844,0.19641658794999897,"GCN(
   (layers): ModuleList(
-    (0): MyGraphConv_2_W(in=408, out=408, normalization=none, activation=<function relu at 0x0000014B8C624AF8>)
+    (0): MyGraphConv_2_W(in=74, out=74, normalization=none, activation=<function relu at 0x0000018D0D1D29D8>)
+  )
+  (dropout): Dropout(p=0.0, inplace=False)
+)"
+celegansneural_297.mat,directed,0.012340426445007324,0.07227172,0.507641752830326,0.48149634105085876,0.3285401842927661,0.02565004723135005,"GCN(
+  (layers): ModuleList(
+    (0): MyGraphConv_2_W(in=3, out=3, normalization=none, activation=<function relu at 0x0000018D0D1D29D8>)
+  )
+  (dropout): Dropout(p=0.0, inplace=False)
+)"
+copperfield_112.mat,undirected,0.30550865051903114,0.20697854,0.2985079584775124,0.2985079584775124,0.35609300093870644,0.20588624142561332,"GCN(
+  (layers): ModuleList(
+    (0): MyGraphConv_2_W(in=7, out=7, normalization=none, activation=<function relu at 0x0000018D0D1D29D8>)
+  )
+  (dropout): Dropout(p=0.0, inplace=False)
+)"
+email_1133.mat,undirected,0.5736254829933469,0.41416937,0.5828014941810017,0.5827510119087104,0.2534938568296857,0.25918093718824875,"GCN(
+  (layers): ModuleList(
+    (0): MyGraphConv_2_W(in=11, out=11, normalization=none, activation=<function relu at 0x0000018D0D1D29D8>)
+  )
+  (dropout): Dropout(p=0.0, inplace=False)
+)"
+jazz_198.mat,directed,0.25300332903862,0.27955976,0.4444447104526879,0.452854509711654,0.08859415454876991,0.08802631708197424,"GCN(
+  (layers): ModuleList(
+    (0): MyGraphConv_2_W(in=10, out=10, normalization=none, activation=<function relu at 0x0000018D0D1D29D8>)
+  )
+  (dropout): Dropout(p=0.0, inplace=False)
+)"
+karate_34.mat,undirected,0.4197896120973044,0.35346812,0.41978961209730403,0.41978961209730403,0.45291342277930957,0.43944055681094973,"GCN(
+  (layers): ModuleList(
+    (0): MyGraphConv_2_W(in=4, out=4, normalization=none, activation=<function relu at 0x0000018D0D1D29D8>)
+  )
+  (dropout): Dropout(p=0.0, inplace=False)
+)"
+lesmis_77.mat,undirected,0.5666879833432481,0.39197254,0.566687983343249,0.566687983343249,0.3678999061079484,0.3557865429055737,"GCN(
+  (layers): ModuleList(
+    (0): MyGraphConv_2_W(in=6, out=6, normalization=none, activation=<function relu at 0x0000018D0D1D29D8>)
+  )
+  (dropout): Dropout(p=0.0, inplace=False)
+)"
+polbooks_105.mat,undirected,0.5269666445565376,0.44141835,0.5272365938060765,0.5272365938060765,0.10831932619208826,0.23067618838756693,"GCN(
+  (layers): ModuleList(
+    (0): MyGraphConv_2_W(in=5, out=5, normalization=none, activation=<function relu at 0x0000018D0D1D29D8>)
+  )
+  (dropout): Dropout(p=0.0, inplace=False)
+)"
+USAir97_332.mat,directed,0.06317272037267685,0.052330397,0.2147356510856881,0.7552637191058766,0.3590238048985606,0.14227117530946287,"GCN(
+  (layers): ModuleList(
+    (0): MyGraphConv_2_W(in=54, out=54, normalization=none, activation=<function relu at 0x0000018D0D1D29D8>)
+  )
+  (dropout): Dropout(p=0.0, inplace=False)
+)"
+USairports_1858.mat,directed,0.18115714192390442,0.16119942,0.2755243410438753,0.2755202783235524,0.4782209469480519,0.19834258156536597,"GCN(
+  (layers): ModuleList(
+    (0): MyGraphConv_2_W(in=408, out=408, normalization=none, activation=<function relu at 0x0000018D0D1D29D8>)
   )
   (dropout): Dropout(p=0.0, inplace=False)
 )"
