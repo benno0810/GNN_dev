@@ -2,6 +2,11 @@
 import torch.optim.lr_scheduler
 from loss import *
 
+
+
+
+
+
 def train(g, features, n_classes, in_feats, n_edges, labels, mask, Q,modularity_classic, args):
     # sethyperparameter
     dropout = 0.0
@@ -9,9 +14,9 @@ def train(g, features, n_classes, in_feats, n_edges, labels, mask, Q,modularity_
     n_hidden = features.shape[1]  # number of hidden nodes
     n_layers = 0  # number of hidden layers
     self_loop = True  #
-    early_stop = False
     visualize_model = False
     last_score = 0
+    precision= 1e-8
 
     grad_direction = args['grad_direction']
 
@@ -55,16 +60,53 @@ def train(g, features, n_classes, in_feats, n_edges, labels, mask, Q,modularity_
                                dropout)
         if cuda:
             model.cuda()
-    loss_fcn = ModularityScore(n_classes, cuda, grad_direction)
+
+    loss_fcn = ModularityScore(n_classes, cuda, grad_direction,Q)
 
     if visualize_model:
         print_parameter(model)
         print_parameter(loss_fcn)
 
+    if n_layers==0:
+        W1_grad = []
+        W2_grad = []
+        bias_grad=[]
+        W1 = []
+        W2 = []
+        bias = []
+        W1_name = []
+        W2_name = []
+        bias_name= []
+        Y_grad = []
+        def grad_W2(grad):
+            W2_grad.append(grad)
+
+        def grad_W1(grad):
+            W1_grad.append(grad)
+        def grad_bias(grad):
+            bias_grad.append(grad)
+
+        for name, param in model.named_parameters():
+            print(name,param)
+
+            if 'weight_1' in name:
+                param.register_hook(grad_W1)
+                W1_name.append(name)
+                W1.append(param)
+            if 'weight_2' in name:
+                param.register_hook(grad_W2)
+                W2_name.append(name)
+                W2.append(param)
+            if 'bias' in name:
+                param.register_hook(grad_bias)
+                bias_name.append(name)
+                bias.append(param)
+
+
     #optimizer = torch.optim.Adam(model.parameters(),lr=lr)
     optimizer = torch.optim.SGD(model.parameters(), lr=lr)
     StepLR= torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer,
-                                                       mode='min',
+                                                       mode='max',
                                                        factor=0.1,
                                                        patience=2,
                                                        verbose=True,
@@ -74,13 +116,13 @@ def train(g, features, n_classes, in_feats, n_edges, labels, mask, Q,modularity_
                                                        min_lr=1e-10,
                                                        eps=1e-10
                                                        )
+    #lr= factor *lr
 
     # apply weight_decay scheduler
     # use self written D method
     # optimizer = torch.optim.SGD(model.parameters(), lr=lr)
     # StepLR = torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=weight_decay_gamma)
     # optimizer = mySGD(model.parameters(), lr=lr, batch_size=features.shape[0], grad_direction=grad_direction)
-
     # train and evaluate (with modularity score and labels)
     dur = []
     M=[]
@@ -96,10 +138,10 @@ def train(g, features, n_classes, in_feats, n_edges, labels, mask, Q,modularity_
         # print('#############WX###################')
         # print(C_hat)
         # use train_mask to train
-        loss = loss_fcn(C_hat[mask], Q)
+        loss = loss_fcn(C_hat[mask])
         if epoch>0 and early_stop:
-            if optimizer.param_groups[0]['lr']<1e-8:
-                print('loss less than 1e-8 training end')
+            if optimizer.param_groups[0]['lr']<precision:
+                print('loss less than 1e-10 training end')
                 print(
                     "Epoch {} | Time(s) {} |  True_Modularity {} | Ground_Truth_Modulairty {} | ETputs(KTEPS) {}".format(
                         epoch,
@@ -121,7 +163,7 @@ def train(g, features, n_classes, in_feats, n_edges, labels, mask, Q,modularity_
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        StepLR.step(loss)
+        StepLR.step(grad_direction*(loss))
 
 
         dur.append(time.time() - t0)
@@ -139,7 +181,6 @@ def train(g, features, n_classes, in_feats, n_edges, labels, mask, Q,modularity_
                                                                      modularity_classic,
                                                                      n_edges / np.mean(
                                                                                                                      dur) / 1000))
-
         if cache_middle_result:
             M.append(-loss.item())
 

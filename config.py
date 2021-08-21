@@ -5,7 +5,7 @@ class InitLearningRate():
             'jazz_198': 1,
             'lesmis_77': 0.1,
             'copperfield_112': 1e-4,
-            'celeganmetabolic_453': 1e-2,
+            'celeganmetabolic_453': 1e-5,
             'celegansneural_297': 1e-2,
             'email_1133': 1e-2,
             'USAir97_332': 1e-1,
@@ -34,17 +34,19 @@ class Args():
             'nn_model': 'GCN',
             'step_size': 1,
             'cuda': 1,
-            'cache_middle_result': True
+            'cache_middle_result': True,
+            'early_stop':False
         }
     def setArgs(self,
                 learning_rate=1e-3,
                 lr_mode = 'scanning',
-                grad_direction=1,
+                grad_direction=-1,
                 n_epochs=150,
                 nn_model='GCN',
                 step_size=1,
                 cuda=1,
-                cache_middle_result=True):
+                cache_middle_result=True,
+                early_stop=False):
         self.args ={
             'lr': learning_rate,
             'lr_mode': lr_mode,
@@ -53,7 +55,8 @@ class Args():
             'nn_model': nn_model,
             'step_size': step_size,
             'cuda': cuda,
-            'cache_middle_result': cache_middle_result
+            'cache_middle_result': cache_middle_result,
+            'early_stop':early_stop
         }
     def getArgs(self):
         return self.args

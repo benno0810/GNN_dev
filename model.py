@@ -79,6 +79,7 @@ class GCN(th.nn.Module):
 
     def forward(self, features):
         h = features
+
         for i, layers in enumerate(self.layers):
             if i != 0:
                 h = self.dropout(h)

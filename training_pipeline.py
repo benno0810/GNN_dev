@@ -28,85 +28,77 @@ def EntryPoint(mode='training',cuda=1,gpu=0):
     model_parameter = {}
     data_name = []
     modularity_scores_classic={}
+    training_loops = 100
+    result_score = []
 
 
+    for i in range(training_loops):
+        for root, dirs, files in os.walk(data_dir):
+            for file in files:
+                if file[-3:] == 'mat':
+                    #append dataset name list
+                    if 'karate_34' not in file:
+                        continue
+                    dataset = file[:-4]
+                    data_name.append(dataset )
+                    G = loadNetworkMat(file, data_dir)
+                    if nx.classes.function.is_directed(G):
+                        graph_type[file] = 'directed'
+                        initial_partition_approach[file]='LPA'
+                    else:
+                        graph_type[file] = 'undirected'
+                        initial_partition_approach[file]='Louvain'
+                    print(file, graph_type[file])
+                    if mode == 'training':
+                        lr = InitLearningRate(dataset,use_Adam=False,use_default_lr=False)
+                        # construct args as training parameter
+                        args = Args(dataset=dataset)
+                        args.setArgs(cuda=cuda,
+                                     grad_direction=-1,
+                                     nn_model=nn_model)
+                        args.setArgs(
+                            learning_rate=lr.get_init_lr(),
+                            lr_mode=mode,
+                            n_epochs=15000,
+                            step_size=100,
+                            early_stop=True
+                        )
+                    elif mode=='scanning':
+                        lr = InitLearningRate(dataset)
+                        # construct args as training parameter
+                        args = Args(dataset=dataset)
+                        args.setArgs(cuda=cuda,
+                                     grad_direction=-1,
+                                     nn_model=nn_model)
+                        args.setArgs(
+                            learning_rate=lr.get_init_lr(),
+                            lr_mode=mode,
+                            n_epochs=150,
+                            step_size=1,
+                        )
 
 
+                    modularity_scores_combo[file], partition = getNewComboPartition(G)
+                    C_out_combo[file] = partition_to_binary_attachment(partition)
+                    modularity_scores_gcn[file], loss[file], C_out[file], model_parameter[file], C_init[file], \
+                    modularity_scores_classic[file], n_communities[file] = startTraining(nx_g=G,data_dir=data_dir,dataset=dataset,args=args.getArgs())
+                    modularity_scores_combo_restricted[file], partition = getNewComboPartition(G, maxcom=n_communities[file])
+                    nmi_gcn[file]=NMI(C_out[file],C_init[file])
+                    nmi[file] = NMI(C_out_combo[file], C_init[file])
+                    result_score.append( loss[file])
 
-    for root, dirs, files in os.walk(data_dir):
-        for file in files:
-            if file[-3:] == 'mat':
-                #append dataset name list
-                # if 'karate_34' not in file:
-                #     continue
-                dataset = file[:-4]
-                data_name.append(dataset )
-                G = loadNetworkMat(file, data_dir)
-                if nx.classes.function.is_directed(G):
-                    graph_type[file] = 'directed'
-                    initial_partition_approach[file]='LPA'
-                else:
-                    graph_type[file] = 'undirected'
-                    initial_partition_approach[file]='Louvain'
-                print(file, graph_type[file])
-                if mode == 'training':
-                    '''
-                    {
-                            'lr': init_lr.get_init_lr(dataset),
-                            'lr_mode': lr_mode,
-                            'grad_direction': grad_direction,
-                            'nn_model': nn_model,
-                            'n_epochs':30000,
-                            'step_size':15000//100,
-                            'cuda': cuda,
-                            'cache_middle_result':cache_middle_result,
-                            'early_stop':True
-                        }
-                    '''
-                    lr = InitLearningRate(dataset)
-                    # construct args as training parameter
-                    args = Args(dataset=dataset)
-                    args.setArgs(cuda=cuda,
-                                 grad_direction=-1,
-                                 nn_model=nn_model)
-                    args.setArgs(
-                        learning_rate=lr.get_init_lr(),
-                        lr_mode=mode,
-                        n_epochs=15000,
-                        step_size=100,
-                    )
-                elif mode=='scanning':
-                    lr = InitLearningRate(dataset)
-                    # construct args as training parameter
-                    args = Args(dataset=dataset)
-                    args.setArgs(cuda=cuda,
-                                 grad_direction=-1,
-                                 nn_model=nn_model)
-                    args.setArgs(
-                        learning_rate=lr.get_init_lr(),
-                        lr_mode=mode,
-                        n_epochs=150,
-                        step_size=1,
-                    )
+        ##save log
+        # save_result(data_name, graph_type, modularity_scores_gcn, modularity_scores_combo, modularity_scores_combo_restricted,modularity_scores_classic,nmi_gcn,nmi,model_parameter,
+        #             data_dir)
+        # #<network>,<initial partition approach>,<number of communities>,<initial modularity>,<modularity after fune-tuning>,<COMBO modularity >,<COMBO modularity without restricting the number of communities and the optimal number of communities it returns >
+        # save_result_for_report(data_name, initial_partition_approach,n_communities, modularity_scores_gcn, loss,modularity_scores_combo, modularity_scores_combo_restricted,modularity_scores_classic,nmi_gcn,nmi,model_parameter,
+        #             data_dir)
 
 
-                modularity_scores_combo[file], partition = getNewComboPartition(G)
-                #C_out_combo[file] = partition_to_binary_attachment(partition)
-                modularity_scores_gcn[file], loss[file], C_out[file], model_parameter[file], C_init[file], \
-                modularity_scores_classic[file], n_communities[file] = startTraining(nx_g=G,data_dir=data_dir,dataset=dataset,args=args.getArgs())
-                modularity_scores_combo_restricted[file], partition = getNewComboPartition(G, maxcom=n_communities[file])
-                nmi_gcn[file]=NMI(C_out[file],C_init[file])
-                nmi[file] = NMI(C_out_combo[file], C_init[file])
+    print(sum(result_score)/len(result_score))
 
-    ##save log
-    save_result(data_name, graph_type, modularity_scores_gcn, modularity_scores_combo, modularity_scores_combo_restricted,modularity_scores_classic,nmi_gcn,nmi,model_parameter,
-                data_dir)
-    #<network>,<initial partition approach>,<number of communities>,<initial modularity>,<modularity after fune-tuning>,<COMBO modularity >,<COMBO modularity without restricting the number of communities and the optimal number of communities it returns >
-    save_result_for_report(data_name, initial_partition_approach,n_communities, modularity_scores_gcn, loss,modularity_scores_combo, modularity_scores_combo_restricted,modularity_scores_classic,nmi_gcn,nmi,model_parameter,
-                data_dir)
 
     print('something')
-
 def temp():
     '''
         test_number = 10

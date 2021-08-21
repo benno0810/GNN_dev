@@ -337,7 +337,7 @@ def getNewComboSeries(G, maxcom, tries=5, verbose=0):
     return part[np.argmax(M)]
 
 
-def generate_model_input(nx_g, cuda, perturbation=True,strong_perturbation=True, random_input=False):
+def generate_model_input(nx_g, cuda, perturbation=False,strong_perturbation=False, random_input=False):
     """
     generate initial input community attachment from some classic methods. add zero columns according to scale ratios
     this is for creating input for arbitrary community numbers prior
@@ -586,3 +586,5 @@ def save_result_for_report(data_name,
         [initial_partition_approach_df, n_communities_df, modularity_classic_df, modularity_gcn_df, loss_df,modularity_combo_df,
          modularity_combo_restricted_df], axis=1)
     result_metrics.to_csv(result_path, encoding='utf-8')
+
+

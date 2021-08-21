@@ -2,18 +2,19 @@ from model import *
 from utils import *
 
 class ModularityScore(th.nn.Module):
-    def __init__(self,n_classes,cuda,direction):
+    def __init__(self,n_classes,cuda,direction,Q):
         super(ModularityScore, self).__init__()
         ## define C as parameter
         #self.params = th.nn.ParameterList([C])
         self.cuda=cuda
         self.direction=direction
+        self.Q = Q
 
 
-    def forward(self,C,Q):
+    def forward(self,C):
         # -tf.linalg.trace(tf.matmul(tf.matmul(tf.transpose(C),Q),C))
         #C=th.sigmoid(C)
-        Q=Q.float()
+        Q=self.Q.float()
         if self.cuda:
             C=C.cuda()
             Q=Q.cuda()
